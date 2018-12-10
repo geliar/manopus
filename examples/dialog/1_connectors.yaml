@@ -1,0 +1,11 @@
+connectors:
+  slack:
+    type: slackrtm
+    config:
+      debug: true
+      token: *slack_token
+      channels: *slack_channels
+      botName: *slack_bot_name
+      botIcon: *slack_bot_icon
+  cli:
+    type: cli

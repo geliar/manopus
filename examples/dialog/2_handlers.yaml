@@ -1,0 +1,53 @@
+default_inputs:
+  - slack
+handlers:
+  - name: greating handler
+    steps:
+      - name: ask for name
+        type: bash
+        match:
+          - field: direct
+            bool: true
+          - field: message
+            template: '(Hi|hi|Hello|hello)'
+        command:
+          - echo Hi <@$REQ_CHAT_USER>, what is your name?
+        export:
+          - current: req.chat_user
+            new: chat_user
+      - name: greeting
+        type: bash
+        timeout: 300
+        match:
+          - field: req.direct
+            bool: true
+          - field: req.chat_user
+            equal: exports.chat_user
+          - field: req.message
+            template: '(My|my) name is (?P<name>[A-Za-z]+)'
+        command:
+          - echo $ENV_RESPONSE $MATCH_NAME
+  - name: repeating handler
+    steps:
+      - name: repeat
+        type: bash
+        match:
+          - field: message
+            template: '^Repeat: (?P<msg>.*)'
+        command:
+          - echo $MATCH_MSG
+  - name: request debug handler
+    steps:
+      - name: debug
+        type: bash
+        match:
+          - field: req.message
+            template: '^Debug: .*'
+        command:
+          - echo $REQJSON
+  - steps:
+    - type: bash
+      inputs:
+        - cli
+      command:
+        - echo $ENV_RESPONSE $REQ_NAME
