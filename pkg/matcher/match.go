@@ -1,6 +1,6 @@
 package matcher
 
-type Match struct {
+type MatchConfig struct {
 	Field string `yaml:"field"`
 	CompareField string `yaml:"compare_field"`
 	Operator string `yaml:"operator"`

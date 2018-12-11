@@ -1,4 +1,5 @@
-vars:
+# var will not be parsed, its just to consolidate variables for manifest
+var:
   slack_token: &slack_token ""
   slack_channels: &slack_channels
     - "#ci"

@@ -8,7 +8,7 @@ import (
 )
 
 type TestData struct {
-	Matches []Match `yaml:"match"`
+	Matches []MatchConfig `yaml:"match"`
 }
 
 func TestRegExpMatcher(t *testing.T) {
