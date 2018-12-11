@@ -6,10 +6,10 @@ handlers:
       - name: ask for name
         type: bash
         match:
-          - field: direct
-            bool: true
-          - field: message
-            template: '(Hi|hi|Hello|hello)'
+          - field: req.direct
+            value: true
+          - field: req.message
+            regexp: '(Hi|hi|Hello|hello)'
         command:
           - echo Hi <@$REQ_CHAT_USER>, what is your name?
         export:
@@ -22,9 +22,9 @@ handlers:
           - field: req.direct
             bool: true
           - field: req.chat_user
-            equal: exports.chat_user
+            equal: export.chat_user
           - field: req.message
-            template: '(My|my) name is (?P<name>[A-Za-z]+)'
+            regexp: '(My|my) name is (?P<name>[A-Za-z]+)'
         command:
           - echo $ENV_RESPONSE $MATCH_NAME
   - name: repeating handler
@@ -33,7 +33,7 @@ handlers:
         type: bash
         match:
           - field: message
-            template: '^Repeat: (?P<msg>.*)'
+            regexp: '^Repeat: (?P<msg>.*)'
         command:
           - echo $MATCH_MSG
   - name: request debug handler
@@ -42,7 +42,7 @@ handlers:
         type: bash
         match:
           - field: req.message
-            template: '^Debug: .*'
+            regexp: '^Debug: .*'
         command:
           - echo $REQJSON
   - steps:
