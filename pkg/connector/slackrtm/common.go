@@ -7,7 +7,7 @@ import (
 
 const (
 	serviceName   = "slackrtm"
-	serviceType   = "input"
+	serviceType   = "connector"
 	connectorName = "slackrtm"
 )
 

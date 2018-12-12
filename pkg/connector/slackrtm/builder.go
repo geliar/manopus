@@ -24,7 +24,7 @@ func (l *slackLogger) Output(_ int, msg string) error {
 }
 
 func builder(name string, config map[string]interface{}) {
-	l := logger().With().Str("connector", name).Logger()
+	l := logger().With().Str("connector_name", name).Logger()
 	l.Debug().Msg("Registering input in the registry")
 	i := new(SlackRTM)
 	i.debug, _ = config["debug"].(bool)
