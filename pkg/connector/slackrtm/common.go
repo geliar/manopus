@@ -1,7 +1,7 @@
 package slackrtm
 
 import (
-	"github.com/DLag/manopus/pkg/log"
+	"github.com/geliar/manopus/pkg/log"
 	"github.com/rs/zerolog"
 )
 

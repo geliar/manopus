@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/DLag/manopus/pkg/config"
-	"github.com/DLag/manopus/pkg/connector"
-	"github.com/DLag/manopus/pkg/log"
+	"github.com/geliar/manopus/pkg/config"
+	"github.com/geliar/manopus/pkg/connector"
+	"github.com/geliar/manopus/pkg/log"
 	"gopkg.in/yaml.v2"
 )
 

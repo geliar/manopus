@@ -20,9 +20,9 @@ handlers:
         timeout: 300
         match:
           - field: req.direct
-            bool: true
+            value: true
           - field: req.chat_user
-            equal: export.chat_user
+            compare: export.chat_user
           - field: req.message
             regexp: '(My|my) name is (?P<name>[A-Za-z]+)'
         command:

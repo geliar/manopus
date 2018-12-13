@@ -2,7 +2,7 @@ package slackrtm
 
 import (
 	"context"
-	"github.com/DLag/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/input"
 	"github.com/nlopes/slack"
 )
 

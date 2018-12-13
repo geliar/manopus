@@ -1,6 +1,6 @@
 package sequencer
 
-import "github.com/DLag/manopus/pkg/matcher"
+import "github.com/geliar/manopus/pkg/matcher"
 
 // HandlerConfig contains description of the execution sequence
 type HandlerConfig struct {

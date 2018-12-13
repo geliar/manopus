@@ -1,9 +1,9 @@
 package slackrtm
 
 import (
-	"github.com/DLag/manopus/pkg/connector"
-	"github.com/DLag/manopus/pkg/input"
-	"github.com/DLag/manopus/pkg/log"
+	"github.com/geliar/manopus/pkg/connector"
+	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/log"
 	"github.com/nlopes/slack"
 	"github.com/rs/zerolog"
 )

@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/DLag/manopus/pkg/connector"
-	"github.com/DLag/manopus/pkg/sequencer"
+	"github.com/geliar/manopus/pkg/connector"
+	"github.com/geliar/manopus/pkg/sequencer"
 )
 
 // Config contains structure of the Manopus manifest
