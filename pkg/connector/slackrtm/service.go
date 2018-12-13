@@ -17,12 +17,12 @@ type SlackRTM struct {
 	rtm *slack.RTM
 }
 
-func (*SlackRTM) validate() {
-
+func (*SlackRTM) validate() error {
+	return nil
 }
 
-func (*SlackRTM) Name() string {
-	return serviceName
+func (c *SlackRTM) Name() string {
+	return c.name
 }
 
 func (*SlackRTM) RegisterHandler(handler input.Handler) {

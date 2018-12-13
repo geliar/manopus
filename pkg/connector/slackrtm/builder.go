@@ -32,10 +32,13 @@ func builder(name string, config map[string]interface{}) {
 	i.channels, _ = config["token"].([]string)
 	i.botName, _ = config["botName"].(string)
 	i.botIcon, _ = config["botIcon"].(string)
+	if i.validate() != nil {
+		l.Fatal().Msg("Cannot validate parameters of connector")
+	}
 
 	i.client = slack.New(i.token)
 	slack.SetLogger(&slackLogger{log: l})
 	i.client.SetDebug(i.debug)
-
+	i.rtm = i.client.NewRTM()
 	input.Register(name, i)
 }
