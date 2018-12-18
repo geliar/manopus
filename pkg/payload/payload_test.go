@@ -1,12 +1,18 @@
 package payload
 
 import (
+	"context"
+	"io/ioutil"
 	"testing"
+
+	"github.com/geliar/manopus/pkg/log"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPayload_FromJson(t *testing.T) {
+	l := log.Output(ioutil.Discard)
+	ctx := l.WithContext(context.Background())
 	tests := []struct {
 		name string
 		in   string
@@ -30,13 +36,15 @@ func TestPayload_FromJson(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
 			p := Payload{}
-			p.FromJson([]byte(tt.in))
+			p.FromJson(ctx, []byte(tt.in))
 			a.EqualValues(tt.out, p)
 		})
 	}
 }
 
 func TestPayload_ToJson(t *testing.T) {
+	l := log.Output(ioutil.Discard)
+	ctx := l.WithContext(context.Background())
 	tests := []struct {
 		name string
 		in   Payload
@@ -57,13 +65,15 @@ func TestPayload_ToJson(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
 			p := tt.in
-			buf := p.ToJson()
+			buf := p.ToJson(ctx)
 			a.EqualValues(tt.out, string(buf))
 		})
 	}
 }
 
 func TestPayload_QueryField(t *testing.T) {
+	l := log.Output(ioutil.Discard)
+	ctx := l.WithContext(context.Background())
 	tests := []struct {
 		name  string
 		in    Payload
@@ -85,13 +95,15 @@ func TestPayload_QueryField(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
 			p := tt.in
-			val := p.QueryField(tt.query)
+			val := p.QueryField(ctx, tt.query)
 			a.EqualValues(tt.out, val)
 		})
 	}
 }
 
 func TestPayload_SetField(t *testing.T) {
+	l := log.Output(ioutil.Discard)
+	ctx := l.WithContext(context.Background())
 	ch := make(chan int)
 	tests := []struct {
 		name  string
@@ -191,7 +203,7 @@ func TestPayload_SetField(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
 			p := tt.in
-			p.SetField(tt.query, tt.value)
+			p.SetField(ctx, tt.query, tt.value)
 			a.EqualValues(tt.out, p)
 		})
 	}

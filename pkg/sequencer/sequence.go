@@ -1,6 +1,8 @@
 package sequencer
 
 import (
+	"context"
+
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/payload"
 )
@@ -11,9 +13,9 @@ type Sequence struct {
 	payload *payload.Payload
 }
 
-func (s *Sequence) Match(event input.Event) {
+func (s *Sequence) Match(ctx context.Context, event input.Event) {
 	newpayload := *(s.payload)
 	newpayload.Req = event.Data
-	s.handler.Steps[s.step].Match[0].Match(&newpayload)
+	s.handler.Steps[s.step].Match[0].Match(ctx, &newpayload)
 	*(s.payload) = newpayload
 }

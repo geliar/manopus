@@ -1,4 +1,4 @@
-package input
+package matcher
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	serviceName = "input_catalog"
+	serviceName = "matcher"
 	serviceType = "core"
 )
 

@@ -26,6 +26,10 @@ func (c *SlackRTM) Name() string {
 	return c.name
 }
 
+func (c *SlackRTM) Type() string {
+	return connectorName
+}
+
 func (*SlackRTM) RegisterHandler(handler input.Handler) {
 	panic("implement me")
 }

@@ -1,6 +1,7 @@
 package sequencer
 
 import (
+	"context"
 	"sync"
 
 	"github.com/geliar/manopus/pkg/input"
@@ -21,8 +22,8 @@ func (s *Sequencer) AddHandler(handler HandlerConfig) error {
 	return nil
 }
 
-func (s *Sequencer) Roll(event input.Event) {
-	l := logger().With().
+func (s *Sequencer) Roll(ctx context.Context, event input.Event) {
+	l := logger(ctx).With().
 		Str("event_input", event.Input).
 		Str("event_type", event.Type).
 		Logger()

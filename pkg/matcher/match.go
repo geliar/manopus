@@ -1,6 +1,10 @@
 package matcher
 
-import "github.com/geliar/manopus/pkg/payload"
+import (
+	"context"
+
+	"github.com/geliar/manopus/pkg/payload"
+)
 
 type MatchConfig struct {
 	//Field field to basic compare
@@ -15,6 +19,11 @@ type MatchConfig struct {
 	RegExp *RegExpMatcher `yaml:"regexp"`
 }
 
-func (m *MatchConfig) Match(payload *payload.Payload) (matched bool) {
+func (m *MatchConfig) Match(ctx context.Context, payload *payload.Payload) (matched bool) {
+	l := logger(ctx)
+	if m.Field == "" {
+		l.Error().Msg("'field' in 'match' should not be empty")
+		return
+	}
 	return false
 }

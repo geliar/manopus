@@ -1,6 +1,8 @@
 package slackrtm
 
 import (
+	"context"
+
 	"github.com/geliar/manopus/pkg/log"
 	"github.com/rs/zerolog"
 )
@@ -11,8 +13,8 @@ const (
 	connectorName = "slackrtm"
 )
 
-func logger() zerolog.Logger {
-	return log.With().
+func logger(ctx context.Context) zerolog.Logger {
+	return log.Ctx(ctx).With().
 		Str("service", serviceName).
 		Str("service_type", serviceType).
 		Logger()

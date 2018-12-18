@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
@@ -23,10 +24,10 @@ func main() {
 		configBuffer = append(configBuffer, []byte("\n")...)
 	}
 	//println(string(configBuffer))
-	var config config.Config
-	fmt.Println(yaml.Unmarshal(configBuffer, &config))
-	for i := range config.Connectors {
+	var c config.Config
+	fmt.Println(yaml.Unmarshal(configBuffer, &c))
+	for i := range c.Connectors {
 		//println(i)
-		connector.Configure(i, config.Connectors[i])
+		connector.Configure(context.Background(), i, c.Connectors[i])
 	}
 }
