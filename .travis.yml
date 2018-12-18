@@ -5,6 +5,7 @@ go:
 services:
   - docker
 install:
+  - export GO111MODULE=on
   - go get github.com/mattn/goveralls
   - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $GOPATH/bin v1.12.3
 before_script:
