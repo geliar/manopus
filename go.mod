@@ -10,5 +10,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/zerolog v1.11.0
 	github.com/stretchr/testify v1.2.2
+	github.com/tidwall/gjson v1.1.3
+	github.com/tidwall/match v1.0.1 // indirect
+	github.com/tidwall/sjson v1.0.3
 	gopkg.in/yaml.v2 v2.2.2
 )
