@@ -2,7 +2,7 @@ module github.com/geliar/manopus
 
 require (
 	github.com/davecgh/go-spew v1.1.1
-	github.com/geliar/yaml v0.0.0-20181218161815-38c88ae90311
+	github.com/geliar/yaml v0.0.0-20181219141838-8ed8a3331646
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
