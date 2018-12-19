@@ -1,6 +1,8 @@
 package matcher
 
-import "regexp"
+import (
+	"regexp"
+)
 
 type RegExpMatcher struct {
 	*regexp.Regexp
@@ -15,11 +17,12 @@ func (m *RegExpMatcher) UnmarshalYAML(unmarshal func(interface{}) error) (err er
 	if exp == "" {
 		return ErrRegExpEmpty
 	}
-	var re *regexp.Regexp
-	if re, err = regexp.Compile(exp); err == nil {
-		m.Regexp = re
+	re, err := regexp.Compile(exp)
+	if err != nil {
+		return err
 	}
-	return err
+	m.Regexp = re
+	return nil
 }
 
 func (m *RegExpMatcher) Match(str string) (matches map[string]interface{}, matched bool) {
@@ -31,7 +34,7 @@ func (m *RegExpMatcher) Match(str string) (matches map[string]interface{}, match
 	results := m.Regexp.FindStringSubmatch(str)
 	names := m.Regexp.SubexpNames()
 	for i, match := range results {
-		if i != 0 {
+		if i != 0 && names[i] != "" {
 			matches[names[i]] = match
 		}
 	}

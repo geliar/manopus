@@ -8,7 +8,7 @@ import (
 	"github.com/geliar/manopus/pkg/config"
 	"github.com/geliar/manopus/pkg/connector"
 	"github.com/geliar/manopus/pkg/log"
-	"gopkg.in/yaml.v2"
+	"github.com/geliar/yaml"
 )
 
 func main() {
