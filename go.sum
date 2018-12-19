@@ -1,7 +1,5 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/geliar/yaml v0.0.0-20181218161815-38c88ae90311 h1:/BPDZ28v70iWr6VFGeEuVBjtyTtAD4GyVjyXV7b6cuI=
-github.com/geliar/yaml v0.0.0-20181218161815-38c88ae90311/go.mod h1:JGcpUvdYRJju02POeuTl8ARp2Rg9XniGoCHQsx2bCn0=
 github.com/geliar/yaml v0.0.0-20181219141838-8ed8a3331646 h1:h+GlKIeSganCrN/nj1yEK5f0SuQvGv8rrglTL1ofkZY=
 github.com/geliar/yaml v0.0.0-20181219141838-8ed8a3331646/go.mod h1:JGcpUvdYRJju02POeuTl8ARp2Rg9XniGoCHQsx2bCn0=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=

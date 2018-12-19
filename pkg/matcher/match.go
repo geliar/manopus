@@ -4,8 +4,6 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/geliar/manopus/pkg/payload"
 )
 
@@ -30,7 +28,6 @@ func (m *MatchConfig) Match(ctx context.Context, payload *payload.Payload) bool 
 		return false
 	}
 	f := payload.QueryField(ctx, m.Field)
-	spew.Dump(f, m.Value)
 	if f == nil {
 		l.Debug().
 			Str("match_field", m.Field).
