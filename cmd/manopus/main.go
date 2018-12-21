@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 
 	"github.com/geliar/manopus/pkg/config"
@@ -25,9 +24,8 @@ func main() {
 	}
 	//println(string(configBuffer))
 	var c config.Config
-	fmt.Println(yaml.Unmarshal(configBuffer, &c))
+	yaml.Unmarshal(configBuffer, &c)
 	for i := range c.Connectors {
-		//println(i)
-		connector.Configure(context.Background(), i, c.Connectors[i])
+		connector.Configure(log.Logger.WithContext(context.Background()), i, c.Connectors[i])
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/geliar/manopus/pkg/payload"
 )
 
+// MatchConfig contains structure of the 'match' list
 type MatchConfig struct {
 	//Field field to basic compare
 	Field string `yaml:"field"`
@@ -20,6 +21,7 @@ type MatchConfig struct {
 	RegExp *RegExpMatcher `yaml:"regexp"`
 }
 
+// Match matches payload with internal matching rules
 func (m *MatchConfig) Match(ctx context.Context, payload *payload.Payload) bool {
 	l := logger(ctx)
 	if m.Field == "" {
@@ -75,7 +77,7 @@ func (m *MatchConfig) compare(ctx context.Context, f, c interface{}, operator st
 	}
 	var a, b float64
 
-	// Converting f to float64
+	// f should be always float64 because of gjson package
 	switch v := f.(type) {
 	case float64:
 		a = v

@@ -1,7 +1,7 @@
 default_inputs:
   - slack
-handlers:
-  - name: greating handler
+sequences:
+  - name: greating sequence
     steps:
       - name: ask for name
         type: bash
@@ -27,7 +27,7 @@ handlers:
             regexp: '(My|my) name is (?P<name>[A-Za-z]+)'
         command:
           - echo $ENV_RESPONSE $MATCH_NAME
-  - name: repeating handler
+  - name: repeating sequence
     steps:
       - name: repeat
         type: bash
@@ -36,7 +36,7 @@ handlers:
             regexp: '^Repeat: (?P<msg>.*)'
         command:
           - echo $MATCH_MSG
-  - name: request debug handler
+  - name: request debug sequence
     steps:
       - name: debug
         type: bash

@@ -34,7 +34,7 @@ func (*SlackRTM) RegisterHandler(handler input.Handler) {
 	panic("implement me")
 }
 
-func (*SlackRTM) SendEvent(handler input.Handler) {
+func (*SlackRTM) SendEvent(input input.Event) {
 	panic("implement me")
 }
 

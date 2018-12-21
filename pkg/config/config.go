@@ -4,7 +4,6 @@ import (
 	"reflect"
 
 	"github.com/geliar/manopus/pkg/connector"
-	"github.com/geliar/manopus/pkg/sequencer"
 	"github.com/geliar/yaml"
 )
 
@@ -18,6 +17,6 @@ type Config struct {
 	Connectors map[string]connector.ConnectorConfig `yaml:"connectors"`
 	//Env variables which represent env part of context data
 	Env map[string]interface{} `yaml:"env"`
-	//Handlers list of handlers
-	Handlers []sequencer.HandlerConfig `yaml:"handlers"`
+	//Sequences list of config of sequences
+	Sequences []SequenceConfig `yaml:"sequences"`
 }

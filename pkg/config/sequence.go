@@ -1,14 +1,14 @@
-package sequencer
+package config
 
 import "github.com/geliar/manopus/pkg/matcher"
 
-// HandlerConfig contains description of the execution sequence
-type HandlerConfig struct {
-	//Name (optional) name of the handler
+// SequenceConfig contains description of the execution sequence
+type SequenceConfig struct {
+	//Name (optional) name of the sequence
 	Name string `yaml:"name"`
 	//Parallel (optional) instances of this sequence could be executed in parallel
 	Parallel bool `yaml:"parallel"`
-	//Steps execution steps of the handler
+	//Steps execution steps of the sequence
 	Steps []StepConfig `yaml:"steps"`
 }
 

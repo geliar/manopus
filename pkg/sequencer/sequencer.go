@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/geliar/manopus/pkg/config"
 	"github.com/geliar/manopus/pkg/input"
 )
 
@@ -12,7 +13,7 @@ type Sequencer struct {
 	sync.RWMutex
 }
 
-func (s *Sequencer) AddHandler(handler HandlerConfig) error {
+func (s *Sequencer) AddSequence(sequence config.SequenceConfig) error {
 	s.Lock()
 	if s.queue == nil {
 		s.queue = new(sequenceStack)
@@ -40,5 +41,4 @@ func (s *Sequencer) Roll(ctx context.Context, event input.Event) {
 		l.Debug().Msg("Empty queue. Skipping event.")
 		return
 	}
-
 }

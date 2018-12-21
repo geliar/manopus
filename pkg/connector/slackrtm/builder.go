@@ -5,12 +5,14 @@ import (
 
 	"github.com/geliar/manopus/pkg/connector"
 	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/log"
+
 	"github.com/nlopes/slack"
 	"github.com/rs/zerolog"
 )
 
 func init() {
-	ctx := context.Background()
+	ctx := log.Logger.WithContext(context.Background())
 	l := logger(ctx)
 	l.Debug().Msg("Registering connector in the catalog")
 	connector.Register(l.WithContext(ctx), connectorName, builder)
@@ -21,7 +23,7 @@ type slackLogger struct {
 }
 
 func (s *slackLogger) Output(_ int, msg string) error {
-	l := logger(context.Background())
+	l := log.Logger
 	l.Debug().Msg(msg)
 	return nil
 }
