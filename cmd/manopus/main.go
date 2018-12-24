@@ -4,6 +4,10 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/geliar/manopus/pkg/input"
+
+	"github.com/geliar/manopus/pkg/sequencer"
+
 	"github.com/geliar/manopus/pkg/config"
 	"github.com/geliar/manopus/pkg/connector"
 	"github.com/geliar/manopus/pkg/log"
@@ -11,6 +15,8 @@ import (
 )
 
 func main() {
+	ctx := log.Logger.WithContext(context.Background())
+	l := log.Ctx(ctx)
 	files, err := ioutil.ReadDir("./examples/dialog/")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Cannot read dir")
@@ -24,8 +30,14 @@ func main() {
 	}
 	//println(string(configBuffer))
 	var c config.Config
-	yaml.Unmarshal(configBuffer, &c)
-	for i := range c.Connectors {
-		connector.Configure(log.Logger.WithContext(context.Background()), i, c.Connectors[i])
+	if err := yaml.Unmarshal(configBuffer, &c); err != nil {
+		l.Fatal().Err(err).Msg("Cannot read config files")
 	}
+	for i := range c.Connectors {
+		connector.Configure(ctx, i, c.Connectors[i])
+	}
+	s := sequencer.Sequencer{}
+	input.RegisterHandlerAll(ctx, s.Roll)
+	ch := make(chan struct{})
+	<-ch
 }

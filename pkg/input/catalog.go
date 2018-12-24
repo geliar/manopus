@@ -16,6 +16,10 @@ func Register(ctx context.Context, name string, driver Driver) {
 	catalog.register(ctx, name, driver)
 }
 
+func RegisterHandlerAll(ctx context.Context, handler Handler) {
+	catalog.registerHandlerAll(ctx, handler)
+}
+
 func StopAll(ctx context.Context) {
 	catalog.stopAll(ctx)
 }
@@ -40,6 +44,20 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Driver)
 	c.inputs[name] = driver
 	l.Info().
 		Msg("Registered new input driver")
+}
+
+func (c *catalogStore) registerHandlerAll(ctx context.Context, handler Handler) {
+	c.Lock()
+	defer c.Unlock()
+	l := logger(ctx)
+
+	for i := range c.inputs {
+		l.Info().
+			Str("input_driver_name", c.inputs[i].Name()).
+			Str("input_driver_type", c.inputs[i].Type()).
+			Msgf("Registering handler to input")
+		c.inputs[i].RegisterHandler(ctx, handler)
+	}
 }
 
 func (c *catalogStore) stopAll(ctx context.Context) {

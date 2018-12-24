@@ -2,8 +2,7 @@
 var:
   slack_token: &slack_token ""
   slack_channels: &slack_channels
-    - "#ci"
+    - "test-bot"
   slack_bot_icon: &slack_bot_icon ":gun:"
-  slack_bot_name: &slack_bot_name "Manopus"
 env:
   response: "Hello,"

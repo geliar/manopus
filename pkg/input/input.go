@@ -5,11 +5,11 @@ import "context"
 type Driver interface {
 	Name() string
 	Type() string
-	RegisterHandler(handler Handler)
+	RegisterHandler(ctx context.Context, handler Handler)
 	Stop(ctx context.Context)
 }
 
-type Handler func(event Event)
+type Handler func(ctx context.Context, event Event)
 
 type Event struct {
 	Input string

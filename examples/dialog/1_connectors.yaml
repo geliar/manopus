@@ -2,10 +2,10 @@ connectors:
   slack:
     type: slackrtm
     config:
-      debug: true
+      debug: false
       token: *slack_token
       channels: *slack_channels
-      botName: *slack_bot_name
-      botIcon: *slack_bot_icon
+      bot_icon_url:
+      bot_icon_emoji: *slack_bot_icon
   cli:
     type: cli
