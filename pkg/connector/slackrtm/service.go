@@ -62,7 +62,6 @@ func (*SlackRTM) Stop(ctx context.Context) {
 func (c *SlackRTM) serve(ctx context.Context) {
 	l := logger(ctx)
 	go c.rtm.ManageConnection()
-
 	for msg := range c.rtm.IncomingEvents {
 		switch ev := msg.Data.(type) {
 		case *slack.HelloEvent:
@@ -106,8 +105,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 			}
 
 		case *slack.RTMError:
-			l.Debug().Msgf("Error: %s\n", ev.Error())
-
+			l.Debug().Err(ev).Msgf("Error: %s\n", ev.Error())
 		case *slack.InvalidAuthEvent:
 			l.Debug().Msgf("Invalid credentials")
 			_ = c.rtm.Disconnect()
@@ -259,7 +257,6 @@ func (c *SlackRTM) sendToChannels(ctx context.Context, message string) {
 			l.Error().Err(err).Msg("Error sending Slack message")
 		}
 	}
-	return
 }
 
 func (c *SlackRTM) getID() string {

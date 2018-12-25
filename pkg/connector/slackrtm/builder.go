@@ -31,7 +31,8 @@ func (s *slackLogger) Output(_ int, msg string) error {
 }
 
 func builder(ctx context.Context, name string, config map[string]interface{}) {
-	l := logger(ctx).With().Str("connector_name", name).Logger()
+	l := logger(ctx)
+	l.With().Str("connector_name", name).Logger()
 	l.Debug().Msg("Registering input in the registry")
 	i := new(SlackRTM)
 	i.created = time.Now().UnixNano()

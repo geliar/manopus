@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/geliar/yaml"
@@ -50,7 +49,6 @@ func TestRegExpMatcher(t *testing.T) {
     regexp: '\l'
 `)
 		var result TestData
-		fmt.Println(yaml.Unmarshal(data, &result))
 		a.Error(yaml.Unmarshal(data, &result), string(data))
 		a.Nil(result.Matches[0].RegExp)
 	})

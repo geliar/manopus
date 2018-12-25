@@ -12,4 +12,4 @@ before_script:
   - GO111MODULE=on golangci-lint run
 script:
   - export GO111MODULE=on
-  - if [[ "$TRAVIS_GO_VERSION" == 1.11.* ]]; then /bin/bash ./.scripts/cover.sh; else go test -v -race ./...; fi
+  - if [[ "$TRAVIS_GO_VERSION" == 1.11.* ]]; then /bin/bash ./.scripts/cover.sh; else go test -v -race -tags integration ./...; fi
