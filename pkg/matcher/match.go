@@ -9,6 +9,12 @@ import (
 
 // MatchConfig contains structure of the 'match' list
 type MatchConfig struct {
+	//And is used when you need to check whether all of the submatches are true
+	And []MatchConfig `yaml:"and"`
+	//Or is used when you need to check whether at least one of the submatches is true
+	Or []MatchConfig `yaml:"or"`
+	//Xor is used when you need to check whether only one of the submatches is true
+	Xor []MatchConfig `yaml:"xor"`
 	//Field field to basic compare
 	Field string `yaml:"field"`
 	//Compare field to compare with
@@ -19,15 +25,51 @@ type MatchConfig struct {
 	Operator string `yaml:"operator"`
 	//RegExp regexp to match with and collect values to match object
 	RegExp *RegExpMatcher `yaml:"regexp"`
+	//Negative is true when result of the match should be reverted !=
+	Negative bool `yaml:"negative"`
 }
 
 // Match matches payload with internal matching rules
 func (m *MatchConfig) Match(ctx context.Context, payload *payload.Payload) bool {
+	and := true
+	if len(m.And) > 0 {
+		and = m.And[0].Match(ctx, payload)
+		if len(m.And) > 1 {
+			for i := 1; i < len(m.And); i++ {
+				and = and && m.And[i].Match(ctx, payload)
+			}
+		}
+	}
+	or := true
+	if len(m.Or) > 0 {
+		or = m.Or[0].Match(ctx, payload)
+		if len(m.Or) > 1 {
+			for i := 1; i < len(m.Or); i++ {
+				or = or || m.Or[i].Match(ctx, payload)
+			}
+		}
+	}
+	xor := true
+	if len(m.Xor) > 0 {
+		xor = m.Xor[0].Match(ctx, payload)
+		if len(m.Xor) > 1 {
+			for i := 1; i < len(m.Xor); i++ {
+				xor = xor != m.Xor[i].Match(ctx, payload)
+			}
+		}
+	}
+	field := m.matchField(ctx, payload)
+	result := and && or && xor && field
+	return result != m.Negative
+}
+
+func (m *MatchConfig) matchField(ctx context.Context, payload *payload.Payload) bool {
 	l := logger(ctx)
+
 	if m.Field == "" {
 		l.Error().
 			Msg("'field' in 'match' should not be empty")
-		return false
+		return true
 	}
 	f := payload.QueryField(ctx, m.Field)
 	if f == nil {

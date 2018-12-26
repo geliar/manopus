@@ -58,6 +58,21 @@ match:
 			},
 			false,
 		},
+		{"ValueStringMatchedNegative",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testdata"},
+			},
+			`
+match:
+  - field: req.testreq
+    value: "testdata"
+    negative: true
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testdata"},
+			},
+			false,
+		},
 		{"ValueBoolMatched",
 			payload.Payload{
 				Req: map[string]interface{}{"testreq": true},
@@ -396,7 +411,7 @@ match:
       "var": true
 `,
 			payload.Payload{},
-			false,
+			true,
 		},
 		{"NoSuchField",
 			payload.Payload{},
@@ -422,6 +437,41 @@ match:
 				Req: map[string]interface{}{"testreq": "testdata"},
 			},
 			false,
+		},
+		{"ValueBoolAndOrXorMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": true},
+			},
+			`
+match:
+  - and:
+    - field: req.testreq
+      value: true
+    - field: req.testreq
+      value: true
+    - field: req.testreq
+      value: true
+    or:
+    - field: req.testreq
+      value: false
+    - field: req.testreq
+      value: true
+    - field: req.testreq
+      value: true
+    xor:
+    - field: req.testreq
+      value: true
+    - field: req.testreq
+      value: false
+    - field: req.testreq
+      value: false
+    field: req.testreq
+    value: true
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": true},
+			},
+			true,
 		},
 		{"Nothing to do",
 			payload.Payload{
