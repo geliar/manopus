@@ -7,8 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/nlopes/slack"
 )
@@ -48,7 +46,9 @@ func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
 	defer c.Unlock()
 	l := logger(ctx)
 	l.Info().Msg("Registered new handler")
+	c.Lock()
 	c.handlers = append(c.handlers, handler)
+	c.Unlock()
 }
 
 func (*SlackRTM) SendEvent(input input.Event) {
@@ -100,8 +100,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 						"mentioned": strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
 					},
 				}
-				spew.Dump(e)
-				c.sendToChannels(ctx, "Hello <@"+ev.User+">")
+				c.sendEventToHandlers(ctx, e)
 			}
 
 		case *slack.RTMError:
@@ -116,6 +115,14 @@ func (c *SlackRTM) serve(ctx context.Context) {
 			// Ignore other events..
 			// fmt.Printf("Unexpected: %v\n", msg.Data)
 		}
+	}
+}
+
+func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event input.Event) {
+	c.RLock()
+	defer c.RUnlock()
+	for _, h := range c.handlers {
+		h(ctx, event)
 	}
 }
 

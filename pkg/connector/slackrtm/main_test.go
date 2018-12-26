@@ -16,34 +16,54 @@ import (
 )
 
 func TestSlack(t *testing.T) {
+	println("1")
 	a := assert.New(t)
 	l := log.Logger
 	ctx := l.WithContext(context.Background())
 	i := new(SlackRTM)
-	i.created = time.Now().UnixNano()
-	i.name = "test"
-	i.debug = false
-	i.token = os.Getenv("SLACK_TOKEN")
+	t.Run("Connect", func(t *testing.T) {
+		i.created = time.Now().UnixNano()
 
-	i.channels = []string{os.Getenv("SLACK_CHANNEL")}
+		i.name = "test"
+		i.debug = false
+		i.token = os.Getenv("SLACK_TOKEN")
 
-	a.NoError(i.validate())
+		i.channels = []string{os.Getenv("SLACK_CHANNEL")}
 
-	client := slack.New(i.token)
-	slack.SetLogger(&slackLogger{log: l})
-	client.SetDebug(i.debug)
-	i.rtm = client.NewRTM()
-	go i.serve(ctx)
-	for n := 0; n < 10; n++ {
-		if i.online.User.ID != "" {
-			break
+		a.NoError(i.validate())
+
+		client := slack.New(i.token)
+		slack.SetLogger(&slackLogger{log: l})
+		client.SetDebug(i.debug)
+		i.rtm = client.NewRTM()
+		go i.serve(ctx)
+		for n := 0; n < 10; n++ {
+			runtime.Gosched()
+			if i.online.User.ID != "" {
+				break
+			}
+			print(".")
+			time.Sleep(time.Millisecond * 500)
 		}
-		time.Sleep(time.Millisecond * 500)
-	}
-	runtime.Gosched()
-	//time.Sleep(time.Second * 2)
-	a.NotEmpty(i.online.User.ID)
-	a.Equal(i.online.User.ID, i.getUserByName(ctx, i.online.User.Name).ID)
+		a.NotEmpty(i.online.User.ID)
+	})
+	t.Run("getUser", func(t *testing.T) {
+		i.online.Users = i.online.Users[:0]
+		a.Equal(i.online.User.ID, i.getUserByName(ctx, i.online.User.Name).ID)
+		a.Equal(i.online.User.Name, i.getUserByID(ctx, i.online.User.ID).Name)
+		//From cache
+		a.Equal(i.online.User.ID, i.getUserByName(ctx, i.online.User.Name).ID)
+		a.Equal(i.online.User.Name, i.getUserByID(ctx, i.online.User.ID).Name)
+	})
+	t.Run("getChannel", func(t *testing.T) {
+		ch := i.online.Channels[0]
+		i.online.Channels = i.online.Channels[:0]
+		a.Equal(ch.ID, i.getChannelByName(ctx, ch.Name).ID)
+		a.Equal(ch.Name, i.getUserByID(ctx, ch.ID).Name)
+		//From cache
+		a.Equal(ch.ID, i.getChannelByName(ctx, ch.Name).ID)
+		a.Equal(ch.Name, i.getUserByID(ctx, ch.ID).Name)
+	})
 	_ = i.rtm.Disconnect()
 }
 
