@@ -44,13 +44,11 @@ func (c *SlackRTM) Type() string {
 }
 
 func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
-	c.Lock()
-	defer c.Unlock()
 	l := logger(ctx)
 	l.Info().Msg("Registered new handler")
 	c.Lock()
+	defer c.Unlock()
 	c.handlers = append(c.handlers, handler)
-	c.Unlock()
 }
 
 func (*SlackRTM) Send(ctx context.Context, response *output.Response) {
@@ -99,6 +97,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 						},
 						"message":   ev.Text,
 						"mentioned": strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
+						"direct":    strings.HasPrefix(ev.Channel, "D"),
 					},
 				}
 				c.sendEventToHandlers(ctx, e)
@@ -232,6 +231,9 @@ func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (user slac
 }
 
 func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (user slack.Channel) {
+	if strings.HasPrefix(id, "D") {
+		return
+	}
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].ID == id {
@@ -252,7 +254,7 @@ func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (user slack.Ch
 	return
 }
 
-func (c *SlackRTM) sendToChannels(ctx context.Context, message string) {
+func (c *SlackRTM) sendToChannel(ctx context.Context, channel string, message string) {
 	l := logger(ctx)
 	params := slack.PostMessageParameters{
 		IconURL:   c.botIcon.IconURL,
@@ -260,17 +262,15 @@ func (c *SlackRTM) sendToChannels(ctx context.Context, message string) {
 		LinkNames: 1,
 		AsUser:    false,
 	}
-	for _, ch := range c.channels {
-		_, _, _, err := c.rtm.SendMessageContext(ctx,
-			c.getChannelByName(ctx, ch).ID,
-			slack.MsgOptionText(message, false),
-			slack.MsgOptionParse(true),
-			slack.MsgOptionPost(),
-			slack.MsgOptionPostMessageParameters(params),
-		)
-		if err != nil {
-			l.Error().Err(err).Msg("Error sending Slack message")
-		}
+	_, _, _, err := c.rtm.SendMessageContext(ctx,
+		channel,
+		slack.MsgOptionText(message, false),
+		slack.MsgOptionParse(true),
+		slack.MsgOptionPost(),
+		slack.MsgOptionPostMessageParameters(params),
+	)
+	if err != nil {
+		l.Error().Err(err).Msg("Error sending Slack message")
 	}
 }
 

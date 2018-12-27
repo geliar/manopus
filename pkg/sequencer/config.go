@@ -19,11 +19,18 @@ type StepConfig struct {
 	//Type of the step executor
 	Type string `yaml:"type"`
 	//Inputs list of inputs to match
-	Inputs []string `yaml:"type"`
+	Inputs []string `yaml:"inputs"`
 	//MatchConfig contains matchers
 	Match []matcher.MatchConfig `yaml:"match"`
-	//Timeout (optional) time (in minutes) to cancel sequence if step is lasting longer
+	//Timeout (optional) time (in seconds) to cancel sequence if step is waiting longer
 	Timeout int64 `yaml:"timeout"`
-	//MaxTime (optional) maximum time (in minutes) a step can execute for.
-	MaxTime int64 `yaml:"maxtime"`
+	//MaxExecutionTime (optional) maximum time (in seconds) a step can execute for
+	MaxExecutionTime int64 `yaml:"max_execution_time"`
+	//Export list of variables to be exported after execution of step
+	Export []struct {
+		//Current variable name in payload
+		Current string `yaml:"current"`
+		//New variable name in export part of payload
+		New string `yaml:"new"`
+	} `yaml:"export"`
 }

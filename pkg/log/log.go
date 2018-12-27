@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -13,29 +14,18 @@ import (
 const (
 	logLevelEnvName  = "LOGLEVEL"
 	logPrettyEnvName = "LOGPRETTY"
-	defaultLevel     = zerolog.DebugLevel
+	defaultLevel     = zerolog.InfoLevel
 )
 
 func init() {
-	level := defaultLevel
-	switch strings.ToLower(os.Getenv(logLevelEnvName)) {
-	case "debug":
-		level = zerolog.DebugLevel
-	case "info":
-		level = zerolog.InfoLevel
-	case "warn":
-		level = zerolog.WarnLevel
-	case "error":
-		level = zerolog.ErrorLevel
-	case "fatal":
-		level = zerolog.FatalLevel
-	case "panic":
-		level = zerolog.PanicLevel
+	var level zerolog.Level
+	if level, _ = zerolog.ParseLevel(strings.ToLower(os.Getenv(logLevelEnvName))); level == zerolog.NoLevel {
+		level = defaultLevel
 	}
 	zerolog.SetGlobalLevel(level)
-	Logger = log.Level(zerolog.DebugLevel)
+	Logger = log.Level(level)
 	if pretty := strings.ToLower(os.Getenv(logPrettyEnvName)); pretty == "1" || pretty == "on" || pretty == "yes" {
-		Logger = Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		Logger = Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
 	}
 	log.Logger = Logger
 }

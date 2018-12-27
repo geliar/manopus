@@ -3,10 +3,10 @@ package payload
 import (
 	"context"
 	"encoding/json"
-
-	"github.com/tidwall/sjson"
+	"fmt"
 
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 type Payload struct {
@@ -52,4 +52,9 @@ func (p *Payload) SetField(ctx context.Context, query string, data interface{}) 
 		return
 	}
 	p.FromJson(ctx, buf)
+}
+
+func (p *Payload) ExportField(ctx context.Context, current string, new string) {
+	value := p.QueryField(ctx, current)
+	p.SetField(ctx, fmt.Sprintf("export.%s", new), value)
 }

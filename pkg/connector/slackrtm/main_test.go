@@ -59,7 +59,6 @@ func TestSlack(t *testing.T) {
 		ch := i.online.Channels[0]
 		i.online.Channels = i.online.Channels[:0]
 		a.Equal(ch.ID, i.getChannelByName(ctx, ch.Name).ID)
-		println("111")
 		a.Equal(ch.Name, i.getChannelByID(ctx, ch.ID).Name)
 		//From cache
 		a.Equal(ch.ID, i.getChannelByName(ctx, ch.Name).ID)

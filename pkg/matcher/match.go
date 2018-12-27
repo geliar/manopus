@@ -58,7 +58,10 @@ func (m *MatchConfig) Match(ctx context.Context, payload *payload.Payload) bool 
 			}
 		}
 	}
-	field := m.matchField(ctx, payload)
+	field := true
+	if m.Field != "" {
+		field = m.matchField(ctx, payload)
+	}
 	result := and && or && xor && field
 	return result != m.Negative
 }
@@ -86,7 +89,7 @@ func (m *MatchConfig) matchField(ctx context.Context, payload *payload.Payload) 
 		c := payload.QueryField(ctx, m.Compare)
 		if c == nil {
 			l.Debug().
-				Str("match_compare", m.Field).
+				Str("match_compare", m.Compare).
 				Msg("Cannot find such compare field in payload")
 			return false
 		}

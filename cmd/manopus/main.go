@@ -6,8 +6,6 @@ import (
 
 	"github.com/geliar/manopus/pkg/input"
 
-	"github.com/geliar/manopus/pkg/sequencer"
-
 	"github.com/geliar/manopus/pkg/config"
 	"github.com/geliar/manopus/pkg/connector"
 	"github.com/geliar/manopus/pkg/log"
@@ -36,8 +34,9 @@ func main() {
 	for i := range c.Connectors {
 		connector.Configure(ctx, i, c.Connectors[i])
 	}
-	s := sequencer.Sequencer{}
-	input.RegisterHandlerAll(ctx, s.Roll)
+
+	c.Sequencer.Init(ctx)
+	input.RegisterHandlerAll(ctx, c.Sequencer.Roll)
 	ch := make(chan struct{})
 	<-ch
 }

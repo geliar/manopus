@@ -4,9 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/geliar/manopus/pkg/payload"
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/payload"
 )
 
 type Sequencer struct {
@@ -22,7 +23,7 @@ type Sequencer struct {
 
 func (s *Sequencer) Init(ctx context.Context) {
 	for _, sc := range s.SequenceConfigs {
-		s.push(sc)
+		s.pushnew(sc)
 	}
 }
 
@@ -31,18 +32,47 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 		Str("event_input", event.Input).
 		Str("event_type", event.Type).
 		Logger()
-	_ = l
-	seq := s.queue.Match(ctx, s.DefaultInputs, event)
-	// Skip event if not matched
-	if seq == nil {
-		return
+
+	gclist := s.queue.GC(ctx)
+	for _, seq := range gclist {
+		s.pushnew(seq.sequenceConfig)
+		l.Debug().Str("sequence_name", seq.sequenceConfig.Name).Msg("Cleaning timed out sequence")
+	}
+
+	sequences := s.queue.Match(ctx, s.DefaultInputs, event)
+	for _, seq := range sequences {
+		l = l.With().
+			Str("sequence_name", seq.sequenceConfig.Name).
+			Int("sequence_step", seq.step).
+			Logger()
+		ctx = l.WithContext(ctx)
+		l.Debug().
+			Msg("Event matched")
+		spew.Dump(seq.payload)
+		if seq.step < len(seq.sequenceConfig.Steps)-1 {
+			for _, e := range seq.sequenceConfig.Steps[seq.step].Export {
+				seq.payload.ExportField(ctx, e.Current, e.New)
+				l.Debug().
+					Str("export_current", e.Current).
+					Str("export_new", e.New).
+					Msg("Exported variable")
+			}
+			seq.step++
+			s.queue.Push(seq)
+			l.Debug().
+				Msg("Next step")
+		} else {
+			s.pushnew(seq.sequenceConfig)
+			l.Debug().Msg("Sequence is finished. Restarting.")
+		}
 	}
 }
 
-func (s *Sequencer) push(sc SequenceConfig) {
-	s.queue.Push(&Sequence{
+func (s *Sequencer) pushnew(sc SequenceConfig) {
+	seq := &Sequence{
 		sequenceConfig: sc,
 		payload:        &payload.Payload{Env: s.Env},
 		step:           0,
-	})
+	}
+	s.queue.PushIfNotExists(seq)
 }

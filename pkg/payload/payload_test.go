@@ -208,3 +208,39 @@ func TestPayload_SetField(t *testing.T) {
 		})
 	}
 }
+
+func TestPayload_ExportField(t *testing.T) {
+	l := log.Output(ioutil.Discard)
+	ctx := l.WithContext(context.Background())
+	tests := []struct {
+		name    string
+		in      Payload
+		current string
+		new     string
+		out     Payload
+	}{
+		{"Export from req", Payload{
+			Req:    map[string]interface{}{"testreq": "oldreq"},
+			Env:    map[string]interface{}{"testenv": "oldenv"},
+			Export: map[string]interface{}{},
+			Match:  map[string]interface{}{"testmatch": "oldmatch"},
+		},
+			"req.testreq",
+			"newexport",
+			Payload{
+				Req:    map[string]interface{}{"testreq": "oldreq"},
+				Env:    map[string]interface{}{"testenv": "oldenv"},
+				Export: map[string]interface{}{"newexport": "oldreq"},
+				Match:  map[string]interface{}{"testmatch": "oldmatch"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := assert.New(t)
+			p := tt.in
+			p.ExportField(ctx, tt.current, tt.new)
+			a.EqualValues(tt.out, p)
+		})
+	}
+}

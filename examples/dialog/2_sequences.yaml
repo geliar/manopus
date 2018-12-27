@@ -23,18 +23,18 @@ sequencer:
             encoding: plain
             type: callback
           export:
-            - current: req.chat_user
+            - current: req.user.id
               new: chat_user
         - name: greeting
           type: bash
-          timeout: 300
+          timeout: 60
           match:
             - or:
                 - field: req.direct
                   value: true
                 - field: req.mentioned
                   value: true
-            - field: req.chat_user
+            - field: req.user.id
               compare: export.chat_user
             - field: req.message
               regexp: '(My|my) name is (?P<name>[A-Za-z]+)'
@@ -45,7 +45,7 @@ sequencer:
         - name: repeat
           type: bash
           match:
-            - field: message
+            - field: req.message
               regexp: '^Repeat: (?P<msg>.*)'
           command:
             - echo $MATCH_MSG
