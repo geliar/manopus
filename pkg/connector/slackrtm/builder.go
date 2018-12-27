@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/geliar/manopus/pkg/input"
-
 	"github.com/geliar/manopus/pkg/connector"
+	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/log"
+	"github.com/geliar/manopus/pkg/output"
 
 	"github.com/nlopes/slack"
 	"github.com/rs/zerolog"
@@ -59,4 +59,5 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	i.rtm = client.NewRTM()
 	go i.serve(ctx)
 	input.Register(ctx, name, i)
+	output.Register(ctx, name, i)
 }

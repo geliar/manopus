@@ -9,7 +9,7 @@ type Driver interface {
 	Stop(ctx context.Context)
 }
 
-type Handler func(ctx context.Context, event Event)
+type Handler func(ctx context.Context, event *Event)
 
 type Event struct {
 	Input string

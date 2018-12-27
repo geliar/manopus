@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 
 	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/output"
+
 	"github.com/nlopes/slack"
 )
 
@@ -51,12 +53,14 @@ func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.Unlock()
 }
 
-func (*SlackRTM) SendEvent(input input.Event) {
+func (*SlackRTM) Send(ctx context.Context, response *output.Response) {
 	panic("implement me")
 }
 
-func (*SlackRTM) Stop(ctx context.Context) {
-	panic("implement me")
+func (c *SlackRTM) Stop(ctx context.Context) {
+	if c.rtm != nil {
+		_ = c.rtm.Disconnect()
+	}
 }
 
 func (c *SlackRTM) serve(ctx context.Context) {
@@ -64,9 +68,6 @@ func (c *SlackRTM) serve(ctx context.Context) {
 	go c.rtm.ManageConnection()
 	for msg := range c.rtm.IncomingEvents {
 		switch ev := msg.Data.(type) {
-		case *slack.HelloEvent:
-			// Ignore hello
-
 		case *slack.ConnectedEvent:
 			l.Debug().Msgf("Infos: %v", ev.Info)
 			l.Debug().Msgf("Connection counter: %d", ev.ConnectionCount)
@@ -83,7 +84,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 			l.Debug().Msgf("Message: %v\n", ev)
 			// Only text messages from real users
 			if ev.User != "" && ev.SubType == "" {
-				e := input.Event{
+				e := &input.Event{
 					Input: c.name,
 					Type:  connectorName,
 					ID:    c.getID(),
@@ -109,20 +110,19 @@ func (c *SlackRTM) serve(ctx context.Context) {
 			l.Debug().Msgf("Invalid credentials")
 			_ = c.rtm.Disconnect()
 			return
-
+		case *slack.DisconnectedEvent:
+			l.Debug().Msgf("Disconnected event received. Stopping connector.")
+			return
 		default:
-
-			// Ignore other events..
-			// fmt.Printf("Unexpected: %v\n", msg.Data)
 		}
 	}
 }
 
-func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event input.Event) {
+func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *input.Event) {
 	c.RLock()
 	defer c.RUnlock()
 	for _, h := range c.handlers {
-		h(ctx, event)
+		go h(ctx, event)
 	}
 }
 
@@ -172,6 +172,7 @@ func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.U
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].Name == name {
+			c.RUnlock()
 			return c.online.Users[i]
 		}
 	}
@@ -180,6 +181,7 @@ func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.U
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].Name == name {
+			c.RUnlock()
 			return c.online.Users[i]
 		}
 	}
@@ -191,6 +193,7 @@ func (c *SlackRTM) getUserByID(ctx context.Context, id string) (user slack.User)
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].ID == id {
+			c.RUnlock()
 			return c.online.Users[i]
 		}
 	}
@@ -199,6 +202,7 @@ func (c *SlackRTM) getUserByID(ctx context.Context, id string) (user slack.User)
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].ID == id {
+			c.RUnlock()
 			return c.online.Users[i]
 		}
 	}
@@ -210,6 +214,7 @@ func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (user slac
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].Name == name {
+			c.RUnlock()
 			return c.online.Channels[i]
 		}
 	}
@@ -218,6 +223,7 @@ func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (user slac
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].Name == name {
+			c.RUnlock()
 			return c.online.Channels[i]
 		}
 	}
@@ -229,6 +235,7 @@ func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (user slack.Ch
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].ID == id {
+			c.RUnlock()
 			return c.online.Channels[i]
 		}
 	}
@@ -237,6 +244,7 @@ func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (user slack.Ch
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].ID == id {
+			c.RUnlock()
 			return c.online.Channels[i]
 		}
 	}

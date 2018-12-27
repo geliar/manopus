@@ -16,7 +16,6 @@ import (
 )
 
 func TestSlack(t *testing.T) {
-	println("1")
 	a := assert.New(t)
 	l := log.Logger
 	ctx := l.WithContext(context.Background())
@@ -35,14 +34,15 @@ func TestSlack(t *testing.T) {
 		client := slack.New(i.token)
 		slack.SetLogger(&slackLogger{log: l})
 		client.SetDebug(i.debug)
+		t.Log("Starting RTM")
 		i.rtm = client.NewRTM()
 		go i.serve(ctx)
-		for n := 0; n < 10; n++ {
+		for n := 0; n < 20; n++ {
 			runtime.Gosched()
-			if i.online.User.ID != "" {
+			if i.online.User.ID != "" && len(i.online.Channels) != 0 {
 				break
 			}
-			print(".")
+			t.Log("Waiting for RTM to start")
 			time.Sleep(time.Millisecond * 500)
 		}
 		a.NotEmpty(i.online.User.ID)
@@ -59,12 +59,13 @@ func TestSlack(t *testing.T) {
 		ch := i.online.Channels[0]
 		i.online.Channels = i.online.Channels[:0]
 		a.Equal(ch.ID, i.getChannelByName(ctx, ch.Name).ID)
-		a.Equal(ch.Name, i.getUserByID(ctx, ch.ID).Name)
+		println("111")
+		a.Equal(ch.Name, i.getChannelByID(ctx, ch.ID).Name)
 		//From cache
 		a.Equal(ch.ID, i.getChannelByName(ctx, ch.Name).ID)
-		a.Equal(ch.Name, i.getUserByID(ctx, ch.ID).Name)
+		a.Equal(ch.Name, i.getChannelByID(ctx, ch.ID).Name)
 	})
-	_ = i.rtm.Disconnect()
+	//_ = i.rtm.Disconnect()
 }
 
 func TestSlackBuilder(t *testing.T) {

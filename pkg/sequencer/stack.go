@@ -1,7 +1,10 @@
 package sequencer
 
 import (
+	"context"
 	"sync"
+
+	"github.com/geliar/manopus/pkg/input"
 )
 
 type contextElement struct {
@@ -12,7 +15,6 @@ type contextElement struct {
 
 type sequenceStack struct {
 	first *contextElement
-	last  *contextElement
 	sync.Mutex
 }
 
@@ -24,24 +26,33 @@ func (s *sequenceStack) Push(sequence *Sequence) {
 		s.first.previous = e
 	}
 	s.first = e
-	if s.last == nil {
-		s.last = s.first
-	}
 }
 
-func (s *sequenceStack) Pop() (seq *Sequence) {
+// Match matching event with sequences in stack, pops and returns first matched sequence
+func (s *sequenceStack) Match(ctx context.Context, defaultInputs []string, event *input.Event) *Sequence {
 	s.Lock()
 	defer s.Unlock()
-	if s.last == nil {
-		return nil
+	elem := s.first
+	for elem != nil {
+		if elem.sequence.Match(ctx, defaultInputs, event) {
+			s.pop(elem)
+			return elem.sequence
+		}
+		elem = elem.next
 	}
-	seq = s.last.sequence
-	if s.first == s.last {
-		s.first = nil
-		s.last = nil
-		return
+	return nil
+}
+
+// Removing element from stack.
+// Warning: pop is not threadsafe sequenceStack should be locked before use
+func (s *sequenceStack) pop(elem *contextElement) {
+	if elem.next != nil {
+		elem.next.previous = elem.previous
 	}
-	s.last = s.last.previous
-	s.last.next = nil
-	return
+	if elem.previous != nil {
+		elem.previous.next = elem.next
+	}
+	if s.first == elem {
+		s.first = elem.next
+	}
 }
