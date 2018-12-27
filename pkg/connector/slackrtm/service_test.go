@@ -47,6 +47,10 @@ func TestSlack(t *testing.T) {
 		}
 		a.NotEmpty(i.online.User.ID)
 	})
+	t.Run("CheckFields", func(t *testing.T) {
+		a.Equal("test", i.Name())
+		a.Equal("slackrtm", i.Type())
+	})
 	t.Run("getUser", func(t *testing.T) {
 		i.online.Users = i.online.Users[:0]
 		a.Equal(i.online.User.ID, i.getUserByName(ctx, i.online.User.Name).ID)
@@ -54,6 +58,9 @@ func TestSlack(t *testing.T) {
 		//From cache
 		a.Equal(i.online.User.ID, i.getUserByName(ctx, i.online.User.Name).ID)
 		a.Equal(i.online.User.Name, i.getUserByID(ctx, i.online.User.ID).Name)
+		//No such user
+		a.Empty(i.getUserByID(ctx, "wrong_asdfhdskf").Name)
+		a.Empty(i.getUserByName(ctx, "wrong_asdfhdskf").Name)
 	})
 	t.Run("getChannel", func(t *testing.T) {
 		ch := i.online.Channels[0]
@@ -63,8 +70,11 @@ func TestSlack(t *testing.T) {
 		//From cache
 		a.Equal(ch.ID, i.getChannelByName(ctx, ch.Name).ID)
 		a.Equal(ch.Name, i.getChannelByID(ctx, ch.ID).Name)
+		//No such channel
+		a.Empty(i.getChannelByName(ctx, "wrong_asdfhdskf").ID)
+		a.Empty(i.getChannelByID(ctx, "wrong_asdfhdskf").ID)
 	})
-	//_ = i.rtm.Disconnect()
+	i.Stop(ctx)
 }
 
 func TestSlackBuilder(t *testing.T) {

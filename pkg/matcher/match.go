@@ -69,11 +69,6 @@ func (m *MatchConfig) Match(ctx context.Context, payload *payload.Payload) bool 
 func (m *MatchConfig) matchField(ctx context.Context, payload *payload.Payload) bool {
 	l := logger(ctx)
 
-	if m.Field == "" {
-		l.Error().
-			Msg("'field' in 'match' should not be empty")
-		return true
-	}
 	f := payload.QueryField(ctx, m.Field)
 	if f == nil {
 		l.Debug().
