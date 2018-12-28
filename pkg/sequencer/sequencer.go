@@ -68,7 +68,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 			if len(outputs) == 0 {
 				outputs = s.DefaultOutputs
 			}
-			for _, o := range seq.sequenceConfig.Steps[seq.step].Outputs {
+			for _, o := range outputs {
 				response := output.Response{
 					ID:       event.ID,
 					Request:  event,
