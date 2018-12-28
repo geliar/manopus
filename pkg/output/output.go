@@ -13,6 +13,12 @@ type Driver interface {
 	Stop(ctx context.Context)
 }
 
+type OutputConfig struct {
+	Destination string `yaml:"destination"`
+	Encoding    string `yaml:"encoding"`
+	Type        string `yaml:"type"`
+}
+
 type Response struct {
 	// ID of original request
 	ID string

@@ -51,8 +51,25 @@ func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.handlers = append(c.handlers, handler)
 }
 
-func (*SlackRTM) Send(ctx context.Context, response *output.Response) {
-	panic("implement me")
+func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
+	l := logger(ctx)
+	if response.Type == "callback" {
+		if response.Request.Input != c.Name() {
+			l.Error().Msg("Cannot process callback response from different input")
+			return
+		}
+		ch, ok := response.Request.Data["channel_id"]
+		if !ok {
+			l.Error().Msg("Cannot find `channel_id` field in request")
+			return
+		}
+		chid, ok := ch.(string)
+		if !ok {
+			l.Error().Msg("Field `channel_id` should be string")
+			return
+		}
+		c.sendToChannel(ctx, chid, response.Data.(string))
+	}
 }
 
 func (c *SlackRTM) Stop(ctx context.Context) {
@@ -87,17 +104,14 @@ func (c *SlackRTM) serve(ctx context.Context) {
 					Type:  connectorName,
 					ID:    c.getID(),
 					Data: map[string]interface{}{
-						"user": map[string]interface{}{
-							"id":   ev.User,
-							"name": c.getUserByID(ctx, ev.User).Name,
-						},
-						"channel": map[string]interface{}{
-							"id":   ev.Channel,
-							"name": c.getChannelByID(ctx, ev.Channel).Name,
-						},
-						"message":   ev.Text,
-						"mentioned": strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
-						"direct":    strings.HasPrefix(ev.Channel, "D"),
+						"user_id":       ev.User,
+						"user_name":     c.getUserByID(ctx, ev.User).Name,
+						"user_realname": c.getUserByID(ctx, ev.User).RealName,
+						"channel_id":    ev.Channel,
+						"channel_name":  c.getChannelByID(ctx, ev.Channel).Name,
+						"message":       ev.Text,
+						"mentioned":     strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
+						"direct":        strings.HasPrefix(ev.Channel, "D"),
 					},
 				}
 				c.sendEventToHandlers(ctx, e)

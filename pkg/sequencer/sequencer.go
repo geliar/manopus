@@ -4,6 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/geliar/manopus/pkg/processor"
+
+	"github.com/geliar/manopus/pkg/output"
+
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/geliar/manopus/pkg/input"
@@ -13,8 +17,11 @@ import (
 type Sequencer struct {
 	//Env variables which represent env part of context data
 	Env map[string]interface{} `yaml:"env"`
-	//DefaultInputs the list of inputs which should be matched if inputs list in step if empty
+	//DefaultInputs the list of inputs which should be matched if inputs list in step is empty
 	DefaultInputs []string `yaml:"default_inputs"`
+	//DefaultOutputs the list of outputs which should be used to send responses
+	//if outputs list in step is empty
+	DefaultOutputs []output.OutputConfig `yaml:"default_outputs"`
 	//SequenceConfigs the list of sequence configs
 	SequenceConfigs []SequenceConfig `yaml:"sequences"`
 	queue           sequenceStack
@@ -49,7 +56,33 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 		l.Debug().
 			Msg("Event matched")
 		spew.Dump(seq.payload)
+
+		// Running specified processor
+		pc := seq.sequenceConfig.Steps[seq.step].Processor
+		if pc.Type != "" && pc.Script != nil {
+			res, _ := processor.Run(ctx, &pc, seq.payload)
+			spew.Dump(res)
+
+			//Sending requests to outputs
+			outputs := seq.sequenceConfig.Steps[seq.step].Outputs
+			if len(outputs) == 0 {
+				outputs = s.DefaultOutputs
+			}
+			for _, o := range seq.sequenceConfig.Steps[seq.step].Outputs {
+				response := output.Response{
+					ID:       event.ID,
+					Request:  event,
+					Type:     o.Type,
+					Encoding: o.Encoding,
+					Data:     res,
+				}
+				output.Send(ctx, o.Destination, &response)
+			}
+		}
+
+		//If this step is not last
 		if seq.step < len(seq.sequenceConfig.Steps)-1 {
+			//Exporting variables
 			for _, e := range seq.sequenceConfig.Steps[seq.step].Export {
 				seq.payload.ExportField(ctx, e.Current, e.New)
 				l.Debug().
@@ -57,11 +90,13 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 					Str("export_new", e.New).
 					Msg("Exported variable")
 			}
+			//Pushing sequence back to queue but with incremented step number
 			seq.step++
 			s.queue.Push(seq)
 			l.Debug().
 				Msg("Next step")
 		} else {
+			//If it is last step starting sequence from beginning
 			s.pushnew(seq.sequenceConfig)
 			l.Debug().Msg("Sequence is finished. Restarting.")
 		}

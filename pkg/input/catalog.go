@@ -39,7 +39,7 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Driver)
 		Logger()
 	if _, ok := c.inputs[name]; ok {
 		l.Fatal().
-			Msg("Trying to register input driver with existing name")
+			Msg("Cannot register input driver with existing name")
 	}
 	c.inputs[name] = driver
 	l.Info().
@@ -47,8 +47,8 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Driver)
 }
 
 func (c *catalogStore) registerHandlerAll(ctx context.Context, handler Handler) {
-	c.Lock()
-	defer c.Unlock()
+	c.RLock()
+	defer c.RUnlock()
 	l := logger(ctx)
 
 	for i := range c.inputs {

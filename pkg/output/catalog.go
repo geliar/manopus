@@ -39,7 +39,7 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Driver)
 		Logger()
 	if _, ok := c.outputs[name]; ok {
 		l.Fatal().
-			Msg("Trying to register output driver with existing name")
+			Msg("Cannot register output driver with existing name")
 	}
 	c.outputs[name] = driver
 	l.Info().
@@ -47,16 +47,17 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Driver)
 }
 
 func (c *catalogStore) send(ctx context.Context, output string, response *Response) {
-	c.Lock()
-	defer c.Unlock()
+	c.RLock()
 	l := logger(ctx)
 	if _, ok := c.outputs[output]; !ok {
+		c.RUnlock()
 		l.Error().
 			Str("output_driver_name", output).
 			Msgf("Cannot find output driver with name '%s'", output)
 		return
 	}
 	o := c.outputs[output]
+	c.RUnlock()
 	o.Send(ctx, response)
 }
 

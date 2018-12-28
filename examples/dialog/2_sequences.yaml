@@ -3,11 +3,14 @@ sequencer:
     response: "Hello,"
   default_inputs:
     - slack
+  default_outputs:
+    - destination: slack
+      encoding: plain
+      type: callback
   sequences:
     - name: greating sequence
       steps:
         - name: ask for name
-          type: bash
           match:
             - or:
               - field: req.direct
@@ -16,17 +19,14 @@ sequencer:
                 value: true
             - field: req.message
               regexp: '(Hi|hi|Hello|hello)'
-          command:
-            - echo Hi <@$REQ_CHAT_USER>, what is your name?
-          output:
-            destination: slack
-            encoding: plain
-            type: callback
+          processor:
+            type: bash
+            script:
+              - 'echo "Hi <@$REQ_USER_ID>, what is your name?"'
           export:
-            - current: req.user.id
+            - current: req.user_id
               new: chat_user
         - name: greeting
-          type: bash
           timeout: 60
           match:
             - or:
@@ -34,33 +34,44 @@ sequencer:
                   value: true
                 - field: req.mentioned
                   value: true
-            - field: req.user.id
+            - field: req.user_id
               compare: export.chat_user
             - field: req.message
               regexp: '(My|my) name is (?P<name>[A-Za-z]+)'
-          command:
-            - echo $ENV_RESPONSE $MATCH_NAME
+          processor:
+            type: bash
+            script:
+              - echo $ENV_RESPONSE $MATCH_NAME
     - name: repeating sequence
       steps:
         - name: repeat
-          type: bash
           match:
             - field: req.message
               regexp: '^Repeat: (?P<msg>.*)'
-          command:
-            - echo $MATCH_MSG
+          processor:
+            type: bash
+            script:
+              - echo $MATCH_MSG
     - name: request debug sequence
       steps:
         - name: debug
           type: bash
           match:
+            - or:
+                - field: req.direct
+                  value: true
+                - field: req.mentioned
+                  value: true
             - field: req.message
-              regexp: '^Debug: .*'
-          command:
-            - echo $REQJSON
+              regexp: '^Debug$'
+          processor:
+            type: bash
+            script: "( set -o posix ; set )"
     - steps:
       - type: bash
         inputs:
           - cli
-        command:
-          - echo $ENV_RESPONSE $REQ_NAME
+        processor:
+          type: bash
+          script:
+            - echo $ENV_RESPONSE $REQ_NAME

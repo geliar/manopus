@@ -1,6 +1,10 @@
 package sequencer
 
-import "github.com/geliar/manopus/pkg/matcher"
+import (
+	"github.com/geliar/manopus/pkg/matcher"
+	"github.com/geliar/manopus/pkg/output"
+	"github.com/geliar/manopus/pkg/processor"
+)
 
 // SequenceConfig contains description of the execution sequence
 type SequenceConfig struct {
@@ -24,8 +28,6 @@ type StepConfig struct {
 	Match []matcher.MatchConfig `yaml:"match"`
 	//Timeout (optional) time (in seconds) to cancel sequence if step is waiting longer
 	Timeout int64 `yaml:"timeout"`
-	//MaxExecutionTime (optional) maximum time (in seconds) a step can execute for
-	MaxExecutionTime int64 `yaml:"max_execution_time"`
 	//Export list of variables to be exported after execution of step
 	Export []struct {
 		//Current variable name in payload
@@ -33,4 +35,6 @@ type StepConfig struct {
 		//New variable name in export part of payload
 		New string `yaml:"new"`
 	} `yaml:"export"`
+	Processor processor.ProcessorConfig `yaml:"processor"`
+	Outputs   []output.OutputConfig     `yaml:"outputs"`
 }
