@@ -4,14 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/geliar/manopus/pkg/processor"
-
-	"github.com/geliar/manopus/pkg/output"
-
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/payload"
+	"github.com/geliar/manopus/pkg/processor"
 )
 
 type Sequencer struct {
@@ -55,13 +51,11 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 		ctx = l.WithContext(ctx)
 		l.Debug().
 			Msg("Event matched")
-		spew.Dump(seq.payload)
 
 		// Running specified processor
 		pc := seq.sequenceConfig.Steps[seq.step].Processor
 		if pc.Type != "" && pc.Script != nil {
 			res, _ := processor.Run(ctx, &pc, seq.payload)
-			spew.Dump(res)
 
 			//Sending requests to outputs
 			outputs := seq.sequenceConfig.Steps[seq.step].Outputs

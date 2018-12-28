@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/geliar/yaml"
+
 	"github.com/stretchr/testify/assert"
 )
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/geliar/manopus/pkg/payload"
 	"github.com/geliar/yaml"
+
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )

@@ -4,10 +4,9 @@ import (
 	"context"
 	"io/ioutil"
 
-	"github.com/geliar/manopus/pkg/input"
-
 	"github.com/geliar/manopus/pkg/config"
 	"github.com/geliar/manopus/pkg/connector"
+	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/log"
 	"github.com/geliar/yaml"
 )

@@ -44,8 +44,6 @@ func (p *Bash) Run(ctx context.Context, config *processor.ProcessorConfig, paylo
 	pp += preparePayload("MATCH_", payload.Match)
 	pp += preparePayload("EXPORT_", payload.Export)
 	pp += preparePayload("REQ_", payload.Req)
-	println(pp)
-	println(script)
 	go func() {
 		_, _ = stdin.Write([]byte(pp))
 		_, _ = stdin.Write([]byte(script))

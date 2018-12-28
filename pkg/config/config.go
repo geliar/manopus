@@ -3,9 +3,8 @@ package config
 import (
 	"reflect"
 
-	"github.com/geliar/manopus/pkg/sequencer"
-
 	"github.com/geliar/manopus/pkg/connector"
+	"github.com/geliar/manopus/pkg/sequencer"
 	"github.com/geliar/yaml"
 )
 
