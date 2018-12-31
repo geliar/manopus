@@ -27,18 +27,19 @@ func (p *Bash) Type() string {
 	return serviceName
 }
 
-func (p *Bash) Run(ctx context.Context, config *processor.ProcessorConfig, payload *payload.Payload) (result interface{}, err error) {
+func (p *Bash) Run(ctx context.Context, config *processor.ProcessorConfig, payload *payload.Payload) (result interface{}, next processor.NextStatus, err error) {
+	next = processor.NextContinue
 	l := logger(ctx)
 	script := p.collectScript(ctx, config.Script)
 	if script == "" {
-		return nil, processor.ErrParseScript
+		return nil, processor.NextStopSequence, processor.ErrParseScript
 	}
 	cmd := exec.Command("/bin/bash", "/dev/stdin")
 	cmd.Env = os.Environ()
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		l.Error().Err(err).Msg("Cannot open stdin of executing process")
-		return nil, err
+		return nil, processor.NextStopSequence, err
 	}
 	pp := preparePayload("ENV_", payload.Env)
 	pp += preparePayload("MATCH_", payload.Match)
@@ -51,9 +52,10 @@ func (p *Bash) Run(ctx context.Context, config *processor.ProcessorConfig, paylo
 	}()
 	buf, err := cmd.Output()
 	if err != nil {
+		next = processor.NextStopSequence
 		l.Debug().Err(err).Msg("Error when executing script")
 	}
-	return string(buf), err
+	return string(buf), next, err
 }
 
 func (Bash) collectScript(ctx context.Context, script interface{}) (result string) {

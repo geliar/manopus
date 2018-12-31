@@ -92,7 +92,7 @@ func (s *sequenceStack) push(sequence *Sequence) {
 	s.first = e
 }
 
-// exists check existense of the element in the stack.
+// exists checks existence of the element in the stack.
 // Warning: exists is not threadsafe sequenceStack should be locked before use
 func (s *sequenceStack) exists(sequence *Sequence) bool {
 	elem := s.first

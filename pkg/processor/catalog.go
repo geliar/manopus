@@ -18,7 +18,7 @@ func Register(ctx context.Context, processor Processor) {
 	catalog.register(ctx, processor)
 }
 
-func Run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, err error) {
+func Run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, next NextStatus, err error) {
 	return catalog.run(ctx, config, payload)
 }
 
@@ -43,7 +43,7 @@ func (c *catalogStore) register(ctx context.Context, processor Processor) {
 		Msg("Registered new processor")
 }
 
-func (c *catalogStore) run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, err error) {
+func (c *catalogStore) run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, next NextStatus, err error) {
 	c.RLock()
 
 	l := logger(ctx)

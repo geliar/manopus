@@ -54,8 +54,10 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 
 		// Running specified processor
 		pc := seq.sequenceConfig.Steps[seq.step].Processor
+		var next processor.NextStatus
 		if pc.Type != "" && pc.Script != nil {
-			res, _ := processor.Run(ctx, &pc, seq.payload)
+			var res interface{}
+			res, next, _ = processor.Run(ctx, &pc, seq.payload)
 
 			//Sending requests to outputs
 			outputs := seq.sequenceConfig.Steps[seq.step].Outputs
@@ -75,7 +77,9 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 		}
 
 		//If this step is not last
-		if seq.step < len(seq.sequenceConfig.Steps)-1 {
+		if next == processor.NextRepeatStep ||
+			(seq.step < len(seq.sequenceConfig.Steps)-1 &&
+				next != processor.NextStopSequence) {
 			//Exporting variables
 			for _, e := range seq.sequenceConfig.Steps[seq.step].Export {
 				seq.payload.ExportField(ctx, e.Current, e.New)
@@ -85,7 +89,9 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 					Msg("Exported variable")
 			}
 			//Pushing sequence back to queue but with incremented step number
-			seq.step++
+			if next != processor.NextRepeatStep {
+				seq.step++
+			}
 			s.queue.Push(seq)
 			l.Debug().
 				Msg("Next step")

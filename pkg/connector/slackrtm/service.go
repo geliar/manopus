@@ -23,6 +23,7 @@ type SlackRTM struct {
 	online   struct {
 		Channels []slack.Channel
 		Users    []slack.User
+		IM       []slack.IM
 		User     slack.UserDetails
 	}
 	botIcon  slack.Icon
@@ -58,14 +59,10 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 			l.Error().Msg("Cannot process callback response from different input")
 			return
 		}
-		ch, ok := response.Request.Data["channel_id"]
-		if !ok {
-			l.Error().Msg("Cannot find `channel_id` field in request")
-			return
-		}
-		chid, ok := ch.(string)
-		if !ok {
-			l.Error().Msg("Field `channel_id` should be string")
+		ch, _ := response.Request.Data["channel_id"]
+		chid, _ := ch.(string)
+		if chid == "" {
+			l.Error().Msg("Field `channel_id` should be non empty string")
 			return
 		}
 		c.sendToChannel(ctx, chid, response.Data.(string))
@@ -126,6 +123,15 @@ func (c *SlackRTM) serve(ctx context.Context) {
 		case *slack.DisconnectedEvent:
 			l.Debug().Msgf("Disconnected event received. Stopping connector.")
 			return
+		case *slack.ChannelCreatedEvent,
+			*slack.ChannelDeletedEvent,
+			*slack.ChannelArchiveEvent,
+			*slack.ChannelRenameEvent,
+			*slack.ChannelUnarchiveEvent:
+			c.updateChannels(ctx)
+		case *slack.UserChangeEvent:
+			c.updateUsers(ctx)
+			c.updateIMs(ctx)
 		default:
 		}
 	}
@@ -179,6 +185,20 @@ func (c *SlackRTM) updateUsers(ctx context.Context) {
 	c.online.Users = users
 	c.Unlock()
 	l.Debug().Msgf("Found %d users", len(users))
+}
+
+func (c *SlackRTM) updateIMs(ctx context.Context) {
+	l := logger(ctx)
+	l.Debug().Msg("Updating Slack IMs")
+	ims, err := c.rtm.GetIMChannelsContext(ctx)
+	if err != nil {
+		l.Error().Err(err).Msg("Error when updating IMs")
+		return
+	}
+	c.Lock()
+	c.online.IM = ims
+	c.Unlock()
+	l.Debug().Msgf("Found %d IMs", len(ims))
 }
 
 func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.User) {

@@ -9,12 +9,20 @@ import (
 
 var ErrParseScript = errors.New("cannot parse script")
 
+type NextStatus int
+
+const (
+	NextContinue NextStatus = iota
+	NextStopSequence
+	NextRepeatStep
+)
+
 //Processor represents interface of script executor
 type Processor interface {
 	//Type get type of the Processor
 	Type() string
 	//Run execution of processor
-	Run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, err error)
+	Run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, next NextStatus, err error)
 }
 
 type ProcessorConfig struct {
