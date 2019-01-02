@@ -20,8 +20,6 @@ type SequenceConfig struct {
 type StepConfig struct {
 	//Name (optional) of the step
 	Name string `yaml:"name"`
-	//Type of the step executor
-	Type string `yaml:"type"`
 	//Inputs list of inputs to match
 	Inputs []string `yaml:"inputs"`
 	//MatchConfig contains matchers

@@ -2,7 +2,10 @@ package sequencer
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
+
+	toml "github.com/BurntSushi/toml"
 
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/output"
@@ -59,21 +62,13 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 			var res interface{}
 			res, next, _ = processor.Run(ctx, &pc, seq.payload)
 
-			//Sending requests to outputs
 			outputs := seq.sequenceConfig.Steps[seq.step].Outputs
 			if len(outputs) == 0 {
 				outputs = s.DefaultOutputs
 			}
-			for _, o := range outputs {
-				response := output.Response{
-					ID:       event.ID,
-					Request:  event,
-					Type:     o.Type,
-					Encoding: o.Encoding,
-					Data:     res,
-				}
-				output.Send(ctx, o.Destination, &response)
-			}
+			//Sending requests to outputs
+			response := s.sendToOutputs(ctx, pc.Encoding, outputs, event, res)
+			seq.payload.Resp = response
 		}
 
 		//If this step is not last
@@ -92,15 +87,90 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 			if next != processor.NextRepeatStep {
 				seq.step++
 			}
+			//Cleanup
+			seq.payload.Req = nil
+			seq.payload.Resp = nil
+			//Pushing sequence back to queue
 			s.queue.Push(seq)
 			l.Debug().
 				Msg("Next step")
 		} else {
 			//If it is last step starting sequence from beginning
 			s.pushnew(seq.sequenceConfig)
-			l.Debug().Msg("Sequence is finished. Restarting.")
+			l.Debug().Msg("Sequence is finished. Creating new.")
 		}
 	}
+}
+
+func (s *Sequencer) sendToOutputs(ctx context.Context, encoding string, outputs []output.OutputConfig, req *input.Event, res interface{}) (resp map[string]interface{}) {
+	l := logger(ctx)
+	// Decoding response
+
+	switch encoding {
+	case "none":
+		var ok bool
+		if resp, ok = res.(map[string]interface{}); !ok {
+			l.Error().
+				Msg("Wrong type of response returned from processor")
+			return
+		}
+	case "json", "toml", "plain":
+		var buf []byte
+		switch v := res.(type) {
+		case string:
+			buf = []byte(v)
+		case []byte:
+			buf = v
+		default:
+			l.Error().
+				Msg("Wrong type of response returned from processor")
+			return
+		}
+		switch encoding {
+		case "json":
+			err := json.Unmarshal(buf, &resp)
+			if err != nil {
+				l.Error().
+					Err(err).
+					Msg("Cannot unmarshal JSON response returned from processor")
+				return
+			}
+		case "toml":
+			err := toml.Unmarshal(buf, &resp)
+			if err != nil {
+				l.Error().
+					Err(err).
+					Msg("Cannot unmarshal TOML response returned from processor")
+				return
+			}
+		case "plain":
+			resp = map[string]interface{}{
+				"data": res,
+			}
+		}
+	case "":
+		l.Debug().
+			Msg("Encoding is empty. Skipping response.")
+		return
+	default:
+		l.Error().
+			Msg("Wrong encoding")
+		return
+	}
+	for _, o := range outputs {
+		l = logger(ctx).With().Str("output_destination", o.Destination).
+			Str("output_type", o.Type).
+			Str("output_encoding", encoding).Logger()
+		response := output.Response{
+			ID:       req.ID,
+			Request:  req,
+			Type:     o.Type,
+			Encoding: encoding,
+			Data:     resp,
+		}
+		output.Send(ctx, o.Destination, &response)
+	}
+	return resp
 }
 
 func (s *Sequencer) pushnew(sc SequenceConfig) {

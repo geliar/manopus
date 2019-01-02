@@ -30,6 +30,8 @@ type ProcessorConfig struct {
 	Type string `yaml:"type"`
 	//MaxExecutionTime (optional) maximum time (in seconds) a step can execute for
 	MaxExecutionTime int64 `yaml:"max_execution_time"`
+	// Encoding of response (none, plain, json, json, toml)
+	Encoding string
 	//Script will be executed by processor
 	Script interface{} `yaml:"script"`
 }

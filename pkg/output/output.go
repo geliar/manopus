@@ -15,19 +15,18 @@ type Driver interface {
 
 type OutputConfig struct {
 	Destination string `yaml:"destination"`
-	Encoding    string `yaml:"encoding"`
 	Type        string `yaml:"type"`
 }
 
 type Response struct {
 	// ID of original request
 	ID string
-	// Encoding defines should be response data decoded or not (plain, json, csv, tsv)
-	Encoding string
 	// Type of response. Default value depends on connector defaults.
 	Type string
 	// Data response data
-	Data interface{}
+	Data map[string]interface{}
+	// Encoding of response (none, plain, json, json, toml)
+	Encoding string
 	// Request original request
 	Request *input.Event
 }

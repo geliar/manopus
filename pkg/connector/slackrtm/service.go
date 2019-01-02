@@ -54,6 +54,7 @@ func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
 
 func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 	l := logger(ctx)
+	var chid, text string
 	if response.Type == "callback" {
 		if response.Request.Input != c.Name() {
 			l.Error().Msg("Cannot process callback response from different input")
@@ -65,7 +66,11 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 			l.Error().Msg("Field `channel_id` should be non empty string")
 			return
 		}
-		c.sendToChannel(ctx, chid, response.Data.(string))
+	}
+	itext, _ := response.Data["data"]
+	text, _ = itext.(string)
+	if text != "" && chid != "" {
+		c.sendToChannel(ctx, chid, text)
 	}
 }
 
@@ -129,9 +134,12 @@ func (c *SlackRTM) serve(ctx context.Context) {
 			*slack.ChannelRenameEvent,
 			*slack.ChannelUnarchiveEvent:
 			c.updateChannels(ctx)
+		case *slack.IMCreatedEvent,
+			*slack.IMCloseEvent,
+			*slack.IMOpenEvent:
+			c.updateIMs(ctx)
 		case *slack.UserChangeEvent:
 			c.updateUsers(ctx)
-			c.updateIMs(ctx)
 		default:
 		}
 	}

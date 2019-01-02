@@ -1,7 +1,8 @@
 module github.com/geliar/manopus
 
 require (
-	github.com/davecgh/go-spew v1.1.1
+	github.com/BurntSushi/toml v0.3.1
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/geliar/yaml v0.0.0-20181219141838-8ed8a3331646
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect

@@ -52,13 +52,14 @@ func TestPayload_ToJson(t *testing.T) {
 	}{
 		{"HappyPath", Payload{
 			Req:    map[string]interface{}{"testreq": "testreq is OK"},
+			Resp:   map[string]interface{}{"testresp": "testresp is OK"},
 			Env:    map[string]interface{}{"testenv": "testenv is OK"},
 			Export: map[string]interface{}{"testexport": "testexport is OK"},
 			Match:  map[string]interface{}{"testmatch": "testmatch is OK"},
 		},
-			[]byte("{\"env\":{\"testenv\":\"testenv is OK\"},\"req\":{\"testreq\":\"testreq is OK\"},\"export\":{\"testexport\":\"testexport is OK\"},\"match\":{\"testmatch\":\"testmatch is OK\"}}"),
+			[]byte("{\"env\":{\"testenv\":\"testenv is OK\"},\"req\":{\"testreq\":\"testreq is OK\"},\"resp\":{\"testresp\":\"testresp is OK\"},\"export\":{\"testexport\":\"testexport is OK\"},\"match\":{\"testmatch\":\"testmatch is OK\"}}"),
 		},
-		{"emptyPayload", Payload{}, []byte("{\"env\":null,\"req\":null,\"export\":null,\"match\":null}")},
+		{"emptyPayload", Payload{}, []byte("{\"env\":null,\"req\":null,\"resp\":null,\"export\":null,\"match\":null}")},
 		{"badPayload", Payload{Req: map[string]interface{}{"bad": make(chan int)}}, nil},
 	}
 	for _, tt := range tests {
@@ -66,7 +67,7 @@ func TestPayload_ToJson(t *testing.T) {
 			a := assert.New(t)
 			p := tt.in
 			buf := p.ToJson(ctx)
-			a.EqualValues(tt.out, string(buf))
+			a.EqualValues(string(tt.out), string(buf))
 		})
 	}
 }

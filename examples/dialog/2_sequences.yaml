@@ -5,7 +5,6 @@ sequencer:
     - slack
   default_outputs:
     - destination: slack
-      encoding: plain
       type: callback
   sequences:
     - name: greating sequence
@@ -21,6 +20,7 @@ sequencer:
               regexp: '(Hi|hi|Hello|hello)'
           processor:
             type: bash
+            encoding: plain
             script:
               - 'echo "Hi <@$REQ_USER_ID>, what is your name?"'
           export:
@@ -40,6 +40,7 @@ sequencer:
               regexp: '(My|my) name is (?P<name>[A-Za-z]+)'
           processor:
             type: bash
+            encoding: plain
             script:
               - echo $ENV_RESPONSE $MATCH_NAME
     - name: repeating sequence
@@ -50,12 +51,12 @@ sequencer:
               regexp: '^Repeat: (?P<msg>.*)'
           processor:
             type: bash
+            encoding: plain
             script:
               - echo $MATCH_MSG
     - name: request debug sequence
       steps:
         - name: debug
-          type: bash
           match:
             - or:
                 - field: req.direct
@@ -63,15 +64,35 @@ sequencer:
                 - field: req.mentioned
                   value: true
             - field: req.message
-              regexp: '^Debug$'
+              regexp: 'Debug$'
           processor:
             type: bash
+            encoding: plain
             script: "( set -o posix ; set )"
+    - name: simple processor sequence
+      steps:
+        - name: simple
+          match:
+            - or:
+                - field: req.direct
+                  value: true
+                - field: req.mentioned
+                  value: true
+            - field: req.message
+              regexp: 'Simple$'
+          processor:
+            type: simple
+            encoding: none
+            script:
+              data: "Simple processor response"
+          outputs:
+            - destination: slack
+              type: callback
     - steps:
-      - type: bash
-        inputs:
+      - inputs:
           - cli
         processor:
           type: bash
+          encoding: plain
           script:
             - echo $ENV_RESPONSE $REQ_NAME
