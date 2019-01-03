@@ -84,10 +84,23 @@ sequencer:
             type: simple
             encoding: none
             script:
+              user_name: dl
+              attachments:
+                - callback_id: "several options"
+                  attachment_type: "default"
+                  actions:
+                    - name: optionA
+                      text: "Option A"
+                      type: button
+                      value": opt_a
+                    - name: optionB
+                      text: "Option B"
+                      type: button
+                      value": opt_b
               data: "Simple processor response"
           outputs:
             - destination: slack
-              type: callback
+              type: message
     - steps:
       - inputs:
           - cli

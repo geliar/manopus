@@ -2,6 +2,7 @@ package slackrtm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -54,24 +55,63 @@ func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
 
 func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 	l := logger(ctx)
+	l.Debug().
+		Str("input_name", response.Request.Input).
+		Str("input_event_id", response.Request.ID).
+		Msg("Received Send event")
 	var chid, text string
-	if response.Type == "callback" {
+	switch response.Type {
+	case "callback":
 		if response.Request.Input != c.Name() {
 			l.Error().Msg("Cannot process callback response from different input")
 			return
 		}
-		ch, _ := response.Request.Data["channel_id"]
-		chid, _ := ch.(string)
-		if chid == "" {
-			l.Error().Msg("Field `channel_id` should be non empty string")
-			return
+		chid, _ = response.Request.Data["channel_id"].(string)
+	case "message", "":
+		chid = c.getChannelID(ctx, response)
+	default:
+		l.Error().
+			Str("response_type", response.Type).
+			Msg("Unsupported response type")
+		return
+	}
+
+	if chid == "" {
+		l.Error().Msg("Cannot determine channel_id")
+		return
+	}
+
+	switch v := response.Data["data"].(type) {
+	case string:
+		text = v
+	case []byte:
+		text = string(v)
+	default:
+		l.Error().Msg("Unknown type of 'data' field of response")
+		return
+	}
+	if text == "" {
+		l.Error().
+			Msg("Text field is empty")
+		return
+	}
+	var attachments []slack.Attachment
+	switch v := response.Data["attachments"].(type) {
+	case []interface{}:
+		buf, err := json.Marshal(v)
+		if err != nil {
+			l.Error().
+				Err(err).
+				Msg("Error marshaling attachments")
+		}
+		err = json.Unmarshal(buf, &attachments)
+		if err != nil {
+			l.Error().
+				Err(err).
+				Msg("Error unmarshaling attachments")
 		}
 	}
-	itext, _ := response.Data["data"]
-	text, _ = itext.(string)
-	if text != "" && chid != "" {
-		c.sendToChannel(ctx, chid, text)
-	}
+	c.sendToChannel(ctx, chid, attachments, text)
 }
 
 func (c *SlackRTM) Stop(ctx context.Context) {
@@ -106,14 +146,16 @@ func (c *SlackRTM) serve(ctx context.Context) {
 					Type:  connectorName,
 					ID:    c.getID(),
 					Data: map[string]interface{}{
-						"user_id":       ev.User,
-						"user_name":     c.getUserByID(ctx, ev.User).Name,
-						"user_realname": c.getUserByID(ctx, ev.User).RealName,
-						"channel_id":    ev.Channel,
-						"channel_name":  c.getChannelByID(ctx, ev.Channel).Name,
-						"message":       ev.Text,
-						"mentioned":     strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
-						"direct":        strings.HasPrefix(ev.Channel, "D"),
+						"user_id":           ev.User,
+						"user_name":         c.getUserByID(ctx, ev.User).Name,
+						"user_display_name": c.getUserByID(ctx, ev.User).Name,
+						"user_real_name":    c.getUserByID(ctx, ev.User).RealName,
+						"channel_id":        ev.Channel,
+						"channel_name":      c.getChannelByID(ctx, ev.Channel).Name,
+						"thread_ts":         ev.ThreadTimestamp,
+						"message":           ev.Text,
+						"mentioned":         strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
+						"direct":            strings.HasPrefix(ev.Channel, "D"),
 					},
 				}
 				c.sendEventToHandlers(ctx, e)
@@ -213,8 +255,9 @@ func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.U
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].Name == name {
+			user = c.online.Users[i]
 			c.RUnlock()
-			return c.online.Users[i]
+			return
 		}
 	}
 	c.RUnlock()
@@ -222,8 +265,32 @@ func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.U
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].Name == name {
+			user = c.online.Users[i]
 			c.RUnlock()
-			return c.online.Users[i]
+			return
+		}
+	}
+	c.RUnlock()
+	return
+}
+
+func (c *SlackRTM) getUserByDisplayName(ctx context.Context, name string) (user slack.User) {
+	c.RLock()
+	for i := range c.online.Users {
+		if c.online.Users[i].Profile.DisplayNameNormalized == name {
+			user = c.online.Users[i]
+			c.RUnlock()
+			return
+		}
+	}
+	c.RUnlock()
+	c.updateUsers(ctx)
+	c.RLock()
+	for i := range c.online.Users {
+		if c.online.Users[i].Profile.DisplayNameNormalized == name {
+			user = c.online.Users[i]
+			c.RUnlock()
+			return
 		}
 	}
 	c.RUnlock()
@@ -251,12 +318,13 @@ func (c *SlackRTM) getUserByID(ctx context.Context, id string) (user slack.User)
 	return
 }
 
-func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (user slack.Channel) {
+func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (channel slack.Channel) {
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].Name == name {
+			channel = c.online.Channels[i]
 			c.RUnlock()
-			return c.online.Channels[i]
+			return
 		}
 	}
 	c.RUnlock()
@@ -264,23 +332,25 @@ func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (user slac
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].Name == name {
+			channel = c.online.Channels[i]
 			c.RUnlock()
-			return c.online.Channels[i]
+			return
 		}
 	}
 	c.RUnlock()
 	return
 }
 
-func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (user slack.Channel) {
+func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (channel slack.Channel) {
 	if strings.HasPrefix(id, "D") {
 		return
 	}
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].ID == id {
+			channel = c.online.Channels[i]
 			c.RUnlock()
-			return c.online.Channels[i]
+			return
 		}
 	}
 	c.RUnlock()
@@ -288,16 +358,25 @@ func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (user slack.Ch
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].ID == id {
+			channel = c.online.Channels[i]
 			c.RUnlock()
-			return c.online.Channels[i]
+			return
 		}
 	}
 	c.RUnlock()
 	return
 }
 
-func (c *SlackRTM) sendToChannel(ctx context.Context, channel string, message string) {
+func (c *SlackRTM) openIM(ctx context.Context, userID string) (imID string) {
+	_, _, imID, _ = c.rtm.OpenIMChannelContext(ctx, userID)
+	return imID
+}
+
+func (c *SlackRTM) sendToChannel(ctx context.Context, channel string, attachments []slack.Attachment, message string) {
 	l := logger(ctx)
+	l.Debug().
+		Str("slack_channel", channel).
+		Msg("Sending message to Slack channel")
 	params := slack.PostMessageParameters{
 		IconURL:   c.botIcon.IconURL,
 		IconEmoji: c.botIcon.IconEmoji,
@@ -310,6 +389,7 @@ func (c *SlackRTM) sendToChannel(ctx context.Context, channel string, message st
 		slack.MsgOptionParse(true),
 		slack.MsgOptionPost(),
 		slack.MsgOptionPostMessageParameters(params),
+		slack.MsgOptionAttachments(attachments...),
 	)
 	if err != nil {
 		l.Error().Err(err).Msg("Error sending Slack message")
@@ -319,4 +399,35 @@ func (c *SlackRTM) sendToChannel(ctx context.Context, channel string, message st
 func (c *SlackRTM) getID() string {
 	id := atomic.AddInt64(&c.id, 1)
 	return fmt.Sprintf("%s-%d-%d", c.name, c.created, id)
+}
+
+func (c *SlackRTM) getChannelID(ctx context.Context, response *output.Response) string {
+	if chID, ok := response.Data["channel_id"].(string); ok && chID != "" {
+		return chID
+	}
+	if chname, ok := response.Data["channel_name"].(string); ok && chname != "" {
+		if ch := c.getChannelByName(ctx, chname); ch.ID != "" {
+			return ch.ID
+		}
+	}
+	if userID, ok := response.Data["user_id"].(string); ok && userID != "" {
+		if ch := c.openIM(ctx, userID); ch != "" {
+			return ch
+		}
+	}
+	if username, ok := response.Data["user_name"].(string); ok && username != "" {
+		if user := c.getUserByName(ctx, username); user.ID != "" {
+			if ch := c.openIM(ctx, user.ID); ch != "" {
+				return ch
+			}
+		}
+	}
+	if username, ok := response.Data["user_display_name"].(string); ok && username != "" {
+		if user := c.getUserByDisplayName(ctx, username); user.ID != "" {
+			if ch := c.openIM(ctx, user.ID); ch != "" {
+				return ch
+			}
+		}
+	}
+	return ""
 }
