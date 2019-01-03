@@ -1,7 +1,14 @@
 package config
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
+
+	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/log"
 
 	"github.com/geliar/manopus/pkg/connector"
 	"github.com/geliar/manopus/pkg/sequencer"
@@ -18,4 +25,41 @@ type Config struct {
 	Connectors map[string]connector.ConnectorConfig `yaml:"connectors"`
 	//Sequencer config
 	Sequencer sequencer.Sequencer `yaml:"sequencer"`
+}
+
+func InitConfig(ctx context.Context, configs []string) {
+	l := logger(ctx)
+	var files []string
+	for _, name := range configs {
+		err := filepath.Walk(name,
+			func(path string, info os.FileInfo, err error) error {
+				if info.Mode().IsRegular() && (filepath.Ext(path) == ".yaml" || filepath.Ext(path) == ".yml") {
+					files = append(files, path)
+				}
+				return nil
+			})
+		if err != nil {
+			l.Error().Err(err).Msgf("Cannot walk through path %s", name)
+			continue
+		}
+	}
+
+	var configBuffer []byte
+	for _, f := range files {
+		log.Info().Str("file", f).Msg("Reading config file")
+		buf, _ := ioutil.ReadFile(f)
+		configBuffer = append(configBuffer, buf...)
+		configBuffer = append(configBuffer, []byte("\n")...)
+	}
+
+	var c Config
+	if err := yaml.Unmarshal(configBuffer, &c); err != nil {
+		l.Fatal().Err(err).Msg("Cannot read config files")
+	}
+	for i := range c.Connectors {
+		connector.Configure(ctx, i, c.Connectors[i])
+	}
+
+	c.Sequencer.Init(ctx)
+	input.RegisterHandlerAll(ctx, c.Sequencer.Roll)
 }
