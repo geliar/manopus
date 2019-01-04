@@ -8,6 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/geliar/manopus/pkg/log"
+
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/output"
 
@@ -24,12 +26,12 @@ type SlackRTM struct {
 	online   struct {
 		Channels []slack.Channel
 		Users    []slack.User
-		IM       []slack.IM
 		User     slack.UserDetails
 	}
 	botIcon  slack.Icon
 	rtm      *slack.RTM
 	handlers []input.Handler
+	stop     bool
 	sync.RWMutex
 }
 
@@ -115,6 +117,7 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 }
 
 func (c *SlackRTM) Stop(ctx context.Context) {
+	c.stop = true
 	if c.rtm != nil {
 		_ = c.rtm.Disconnect()
 	}
@@ -124,6 +127,10 @@ func (c *SlackRTM) serve(ctx context.Context) {
 	l := logger(ctx)
 	go c.rtm.ManageConnection()
 	for msg := range c.rtm.IncomingEvents {
+		if c.stop {
+			l.Info().Msg("Stop request received")
+			return
+		}
 		switch ev := msg.Data.(type) {
 		case *slack.ConnectedEvent:
 			l.Debug().Msgf("Infos: %v", ev.Info)
@@ -168,18 +175,13 @@ func (c *SlackRTM) serve(ctx context.Context) {
 			_ = c.rtm.Disconnect()
 			return
 		case *slack.DisconnectedEvent:
-			l.Debug().Msgf("Disconnected event received. Stopping connector.")
-			return
+			l.Debug().Msgf("Disconnected event received")
 		case *slack.ChannelCreatedEvent,
 			*slack.ChannelDeletedEvent,
 			*slack.ChannelArchiveEvent,
 			*slack.ChannelRenameEvent,
 			*slack.ChannelUnarchiveEvent:
 			c.updateChannels(ctx)
-		case *slack.IMCreatedEvent,
-			*slack.IMCloseEvent,
-			*slack.IMOpenEvent:
-			c.updateIMs(ctx)
 		case *slack.UserChangeEvent:
 			c.updateUsers(ctx)
 		default:
@@ -237,20 +239,6 @@ func (c *SlackRTM) updateUsers(ctx context.Context) {
 	l.Debug().Msgf("Found %d users", len(users))
 }
 
-func (c *SlackRTM) updateIMs(ctx context.Context) {
-	l := logger(ctx)
-	l.Debug().Msg("Updating Slack IMs")
-	ims, err := c.rtm.GetIMChannelsContext(ctx)
-	if err != nil {
-		l.Error().Err(err).Msg("Error when updating IMs")
-		return
-	}
-	c.Lock()
-	c.online.IM = ims
-	c.Unlock()
-	l.Debug().Msgf("Found %d IMs", len(ims))
-}
-
 func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.User) {
 	c.RLock()
 	for i := range c.online.Users {
@@ -301,8 +289,9 @@ func (c *SlackRTM) getUserByID(ctx context.Context, id string) (user slack.User)
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].ID == id {
+			user = c.online.Users[i]
 			c.RUnlock()
-			return c.online.Users[i]
+			return
 		}
 	}
 	c.RUnlock()
@@ -310,8 +299,9 @@ func (c *SlackRTM) getUserByID(ctx context.Context, id string) (user slack.User)
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].ID == id {
+			user = c.online.Users[i]
 			c.RUnlock()
-			return c.online.Users[i]
+			return
 		}
 	}
 	c.RUnlock()
@@ -368,6 +358,9 @@ func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (channel slack
 }
 
 func (c *SlackRTM) openIM(ctx context.Context, userID string) (imID string) {
+	log.Debug().
+		Str("slack_user_id", userID).
+		Msg("Openning new Slack IM channel")
 	_, _, imID, _ = c.rtm.OpenIMChannelContext(ctx, userID)
 	return imID
 }
