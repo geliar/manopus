@@ -1,31 +1,36 @@
 sequencer:
+  # Variables which will be accessible for every sequence
+  # through env object
   env:
     response: "Hello,"
+  # List of inputs to be applied to step without specified inputs list
   default_inputs:
     - slack
+  # List of outputs to be applied to step without specified outputs list
   default_outputs:
     - destination: slack
       type: callback
+  # List of configurations of sequences
   sequences:
-    - name: greating sequence
-      steps:
-        - name: ask for name
-          match:
-            - or:
-              - field: req.direct
-                value: true
-              - field: req.mentioned
-                value: true
+    - name: greating sequence # Name of the sequence for logs (optional)
+      steps: # List of the sequence steps
+        - name: ask for name # Name of the step for logs (optional)
+          match: # List of the matching rules
+            - or: # Except one rule below should return 'true'
+              - field: req.direct # Field direct from input request
+                value: true       # should be bool and contain true
+              - field: req.mentioned # or this field should be true
+                value: true          # to make 'or' statement become true
             - field: req.message
-              regexp: '(Hi|hi|Hello|hello)'
-          processor:
-            type: bash
-            encoding: plain
-            script:
+              regexp: '(Hi|hi|Hello|hello)' # Regexp match rule
+          processor: # Processor which will process data from input and may return some response
+            type: bash # Processing script with Bash
+            encoding: plain # Response will be  in plain text format
+            script: # Bash script to be executed
               - 'echo "Hi <@$REQ_USER_ID>, what is your name?"'
-          export:
-            - current: req.user_id
-              new: chat_user
+          export: # List of values to be exported to the sequence context
+            - current: req.user_id # Value of req.user_id will be accessible in next step
+              new: chat_user       # as export.chat_user variable
         - name: greeting
           timeout: 60
           match:

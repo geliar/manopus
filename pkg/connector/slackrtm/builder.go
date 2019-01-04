@@ -52,7 +52,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	if i.validate() != nil {
 		l.Fatal().Msg("Cannot validate parameters of connector")
 	}
-
+	i.stopped = make(chan struct{})
 	client := slack.New(i.token)
 	slack.SetLogger(&slackLogger{log: l})
 	client.SetDebug(i.debug)

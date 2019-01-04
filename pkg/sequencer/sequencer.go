@@ -24,6 +24,7 @@ type Sequencer struct {
 	//SequenceConfigs the list of sequence configs
 	SequenceConfigs []SequenceConfig `yaml:"sequences"`
 	queue           sequenceStack
+	stop            bool
 	sync.RWMutex
 }
 
@@ -38,7 +39,12 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 		Str("event_input", event.Input).
 		Str("event_type", event.Type).
 		Logger()
-
+	s.RLock()
+	defer s.RUnlock()
+	if s.stop {
+		l.Debug().Msg("Received event on stopped Sequencer")
+		return
+	}
 	gclist := s.queue.GC(ctx)
 	for _, seq := range gclist {
 		s.pushnew(seq.sequenceConfig)
@@ -100,6 +106,14 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 			l.Debug().Msg("Sequence is finished. Creating new.")
 		}
 	}
+}
+
+func (s *Sequencer) Stop(ctx context.Context) {
+	l := logger(ctx)
+	l.Info().Msg("Shutting down sequencer")
+	s.Lock()
+	s.stop = true
+	defer s.Unlock()
 }
 
 func (s *Sequencer) sendToOutputs(ctx context.Context, encoding string, outputs []output.OutputConfig, req *input.Event, res interface{}) (resp map[string]interface{}) {

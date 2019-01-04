@@ -26,8 +26,8 @@ func TestSlack(t *testing.T) {
 		i.name = "test"
 		i.debug = false
 		i.token = os.Getenv("SLACK_TOKEN")
-
 		i.channels = []string{os.Getenv("SLACK_CHANNEL")}
+		i.stopped = make(chan struct{})
 
 		a.NoError(i.validate())
 

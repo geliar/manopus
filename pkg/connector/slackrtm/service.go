@@ -8,9 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/geliar/manopus/pkg/log"
-
 	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/log"
 	"github.com/geliar/manopus/pkg/output"
 
 	"github.com/nlopes/slack"
@@ -32,6 +31,7 @@ type SlackRTM struct {
 	rtm      *slack.RTM
 	handlers []input.Handler
 	stop     bool
+	stopped  chan struct{}
 	sync.RWMutex
 }
 
@@ -116,19 +116,13 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 	c.sendToChannel(ctx, chid, attachments, text)
 }
 
-func (c *SlackRTM) Stop(ctx context.Context) {
-	c.stop = true
-	if c.rtm != nil {
-		_ = c.rtm.Disconnect()
-	}
-}
-
 func (c *SlackRTM) serve(ctx context.Context) {
 	l := logger(ctx)
 	go c.rtm.ManageConnection()
 	for msg := range c.rtm.IncomingEvents {
 		if c.stop {
-			l.Info().Msg("Stop request received")
+			l.Info().Msg("Shutdown request received")
+			defer func() { c.stopped <- struct{}{} }()
 			return
 		}
 		switch ev := msg.Data.(type) {
@@ -187,6 +181,19 @@ func (c *SlackRTM) serve(ctx context.Context) {
 		default:
 		}
 	}
+}
+
+func (c *SlackRTM) Stop(ctx context.Context) {
+	c.Lock()
+	defer c.Unlock()
+	if c.stop {
+		return
+	}
+	c.stop = true
+	if c.rtm != nil {
+		_ = c.rtm.Disconnect()
+	}
+	<-c.stopped
 }
 
 func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *input.Event) {

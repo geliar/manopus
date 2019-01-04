@@ -69,7 +69,7 @@ func (c *catalogStore) stopAll(ctx context.Context) {
 		l.Info().
 			Str("input_driver_name", c.inputs[i].Name()).
 			Str("input_driver_type", c.inputs[i].Type()).
-			Msgf("Stopping input driver")
+			Msgf("Shutting down input driver")
 		c.inputs[i].Stop(ctx)
 		delete(c.inputs, i)
 	}

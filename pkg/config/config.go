@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/geliar/manopus/pkg/connector"
+	"github.com/geliar/manopus/pkg/http"
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/log"
-
-	"github.com/geliar/manopus/pkg/connector"
 	"github.com/geliar/manopus/pkg/sequencer"
+
 	"github.com/geliar/yaml"
 )
 
@@ -25,9 +26,11 @@ type Config struct {
 	Connectors map[string]connector.ConnectorConfig `yaml:"connectors"`
 	//Sequencer config
 	Sequencer sequencer.Sequencer `yaml:"sequencer"`
+	//HTTP server config
+	HTTP http.HTTPConfig
 }
 
-func InitConfig(ctx context.Context, configs []string) {
+func InitConfig(ctx context.Context, configs []string) (*sequencer.Sequencer, *http.HTTPServer) {
 	l := logger(ctx)
 	var files []string
 	for _, name := range configs {
@@ -54,7 +57,7 @@ func InitConfig(ctx context.Context, configs []string) {
 
 	var c Config
 	if err := yaml.Unmarshal(configBuffer, &c); err != nil {
-		l.Fatal().Err(err).Msg("Cannot read config files")
+		l.Fatal().Err(err).Msg("Cannot parse config files")
 	}
 	for i := range c.Connectors {
 		connector.Configure(ctx, i, c.Connectors[i])
@@ -62,4 +65,6 @@ func InitConfig(ctx context.Context, configs []string) {
 
 	c.Sequencer.Init(ctx)
 	input.RegisterHandlerAll(ctx, c.Sequencer.Roll)
+	h := http.Init(ctx, c.HTTP)
+	return &c.Sequencer, h
 }
