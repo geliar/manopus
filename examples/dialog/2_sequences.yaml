@@ -2,7 +2,7 @@ sequencer:
   # Variables which will be accessible for every sequence
   # through env object
   env:
-    response: "Hello,"
+    response: "Hello "
   # List of inputs to be applied to step without specified inputs list
   default_inputs:
     - slack
@@ -26,9 +26,9 @@ sequencer:
               encoding: plain # Response will be  in plain text format
               script: # Bash script to be executed
                 - 'echo "Hi <@$REQ_USER_ID>, what is your name?"'
-          export: # List of values to be exported to the sequence context
-            - current: req.user_id # Value of req.user_id will be accessible in next step
-              new: chat_user       # as export.chat_user variable
+              export: # List of values to be exported to the sequence context
+                - current: req.user_id # Value of req.user_id will be accessible in next step
+                  new: chat_user       # as export.chat_user variable
         - name: greeting
           timeout: 60
           match:
