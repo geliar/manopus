@@ -21,11 +21,11 @@ sequencer:
                 value: true          # to make 'or' statement become true
             - field: req.message
               regexp: '(Hi|hi|Hello|hello)' # Regexp match rule
-          processor: # Processor which will process data from input and may return some response
-            type: bash # Processing script with Bash
-            encoding: plain # Response will be  in plain text format
-            script: # Bash script to be executed
-              - 'echo "Hi <@$REQ_USER_ID>, what is your name?"'
+          processors: # Processor which will process data from input and may return some response
+            - type: bash # Processing script with Bash
+              encoding: plain # Response will be  in plain text format
+              script: # Bash script to be executed
+                - 'echo "Hi <@$REQ_USER_ID>, what is your name?"'
           export: # List of values to be exported to the sequence context
             - current: req.user_id # Value of req.user_id will be accessible in next step
               new: chat_user       # as export.chat_user variable
@@ -41,49 +41,48 @@ sequencer:
               compare: export.chat_user
             - field: req.message
               regexp: '(My|my) name is (?P<name>[A-Za-z]+)'
-          processor:
-            type: bash
-            encoding: plain
-            script:
-              - echo $ENV_RESPONSE $MATCH_NAME
+          processors:
+            - type: bash
+              encoding: plain
+              script:
+                - echo $ENV_RESPONSE $MATCH_NAME
     - name: repeating sequence
       steps:
         - name: repeat
           match:
             - field: req.message
-              regexp: '^(@.* )Repeat: (?P<msg>.*)'
-          processor:
-            type: bash
-            encoding: plain
-            script:
-              - echo $MATCH_MSG
+              regexp: '^(@.* )?Repeat: (?P<msg>.*)'
+          processors:
+            - type: bash
+              encoding: plain
+              script:
+                - echo $MATCH_MSG
     - name: always direct response
       steps:
         - match:
             - field: req.message
               regexp: '^(@.* )Direct: (?P<msg>.*)'
-          skip_callback: true
-          processor:
-            type: bash
-            encoding: json
-            script:
-              - 'echo "{\"data\":\"$MATCH_MSG\",\"user_id\":\"$REQ_USER_ID\"}"'
-          outputs:
-            - destination: slack
+          processors:
+            - type: bash
+              encoding: json
+              destination: slack
+              skip_callback: true
+              script:
+                - 'echo "{\"data\":\"$MATCH_MSG\",\"user_id\":\"$REQ_USER_ID\"}"'
     - name: sleeping sequence
       steps:
       - name: sleep
-        timeout: 60
         match:
           - field: req.message
             regexp: '^sleep\((?P<duration>.*)\)'
-        processor:
-          type: bash
-          encoding: plain
-          script:
-            - trap 'echo "SIGINT has been received"' SIGINT
-            - sleep $MATCH_DURATION
-            - echo Was sleeping for $MATCH_DURATION seconds
+        processors:
+          - max_execution_time: 60
+            type: bash
+            encoding: plain
+            script:
+              - trap 'echo "SIGINT has been received"' SIGINT
+              - sleep $MATCH_DURATION
+              - echo Was sleeping for $MATCH_DURATION seconds
     - name: request debug sequence
       steps:
         - name: debug
@@ -92,13 +91,14 @@ sequencer:
                 - field: req.direct
                   value: true
                 - field: req.mentioned
+                - field: req.mentioned
                   value: true
             - field: req.message
-              regexp: '(@.* )Debug$'
-          processor:
-            type: bash
-            encoding: plain
-            script: "( set -o posix ; set )"
+              regexp: '(@.* )?Debug$'
+          processors:
+            - type: bash
+              encoding: plain
+              script: ( set -o posix ; set ) | grep 'REQ_\|ENV_\|MATCH_'
     - name: simple processor sequence
       steps:
         - name: simple
@@ -110,32 +110,77 @@ sequencer:
                   value: true
             - field: req.message
               regexp: 'Simple$'
-          processor:
-            type: simple
-            encoding: none
-            script:
-              user_name: dl
-              attachments:
-                - callback_id: "several options"
-                  attachment_type: "default"
-                  actions:
-                    - name: optionA
-                      text: "Option A"
-                      type: button
-                      value": opt_a
-                    - name: optionB
-                      text: "Option B"
-                      type: button
-                      value": opt_b
+          processors:
+            - type: simple
+              encoding: none
+              destination: slack
+              script:
+                user_name: dl
+                attachments:
+                  - callback_id: "several options"
+                    attachment_type: "default"
+                    actions:
+                      - name: optionA
+                        text: "Option A"
+                        type: button
+                        value": opt_a
+                      - name: optionB
+                        text: "Option B"
+                        type: button
+                        value": opt_b
               data: "Simple processor response"
-          outputs:
-            - destination: slack
-              type: message
+    - name: HTTP request debug sequence
+      steps:
+        - name: http debug
+          inputs:
+            - http
+          match:
+            - field: req.http_method
+              value: "GET"
+            - field: req.http_uri
+              regexp: '^/debug'
+          processors:
+            - type: bash
+              encoding: plain
+              script: ( set -o posix ; set ) | grep 'REQ_\|ENV_\|MATCH_'
+    - name: Message from HTTP to Slack
+      steps:
+        - inputs:
+            - http
+          match:
+            - field: req.http_uri
+              regexp: '^/message'
+            - field: req.http_form.message.0
+              regexp: '(?P<msg>.*)'
+            - field: req.http_form.user.0
+              regexp: '(?P<user>.*)'
+          processors:
+            - type: bash
+              encoding: json
+              destination: slack
+              skip_callback: true
+              script:
+                - 'echo "{\"data\":\"$MATCH_MSG\",\"user_name\":\"$MATCH_USER\"}"'
+            - type: bash
+              encoding: plain
+              script:
+                - 'echo "Sent \"$MATCH_MSG\" to \"$MATCH_USER\""'
+    - name: Debug in JSON
+      steps:
+        - inputs:
+          - http
+          match:
+            - field: req.http_uri
+              regexp: '^/json'
+          processors:
+            - type: bash
+              encoding: toml
+              script: ( set -o posix ; set ) | grep 'REQ_\|ENV_\|MATCH_' | sed "s/\(.*\)=\(.*\)/\1=\"\2\"/g"
     - steps:
       - inputs:
           - cli
-        processor:
-          type: bash
-          encoding: plain
-          script:
-            - echo $ENV_RESPONSE $REQ_NAME
+        processors:
+          - type: bash
+            encoding: plain
+            script:
+              - echo $ENV_RESPONSE $REQ_NAME

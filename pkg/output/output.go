@@ -12,8 +12,3 @@ type Driver interface {
 	Send(ctx context.Context, response *payload.Response)
 	Stop(ctx context.Context)
 }
-
-type OutputConfig struct {
-	Destination string `yaml:"destination"`
-	Type        string `yaml:"type"`
-}

@@ -15,10 +15,7 @@ import (
 )
 
 func init() {
-	ctx := log.Logger.WithContext(context.Background())
-	l := logger(ctx)
-	l.Debug().Msg("Registering processor in the catalog")
-	processor.Register(ctx, new(Bash))
+	processor.Register(log.Logger.WithContext(context.Background()), new(Bash))
 }
 
 type Bash struct {
@@ -80,7 +77,7 @@ func (p *Bash) Run(ctx context.Context, config *processor.ProcessorConfig, paylo
 	err = cmd.Wait()
 	if err != nil {
 		next = processor.NextStopSequence
-		l.Debug().Err(err).Msg("Error when executing script")
+		l.Error().Err(err).Msg("Error when executing script")
 	}
 	<-stdoutReadCh
 	return string(stdoutBuf), next, err

@@ -48,8 +48,6 @@ func (c *SlackRTM) Type() string {
 }
 
 func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
-	l := logger(ctx)
-	l.Info().Msg("Registered new handler")
 	c.Lock()
 	defer c.Unlock()
 	c.handlers = append(c.handlers, handler)
@@ -81,7 +79,7 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 	chid = c.getChannelID(ctx, response)
 
 	if chid == "" {
-		l.Error().Msg("Cannot determine channel_id")
+		l.Warn().Msg("Cannot determine channel_id")
 		return
 	}
 
@@ -156,6 +154,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 						"channel_id":        ev.Channel,
 						"channel_name":      c.getChannelByID(ctx, ev.Channel).Name,
 						"thread_ts":         ev.ThreadTimestamp,
+						"ts":                ev.Timestamp,
 						"message":           ev.Text,
 						"mentioned":         strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
 						"direct":            strings.HasPrefix(ev.Channel, "D"),
@@ -188,13 +187,13 @@ func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *payload.Event
 	c.RLock()
 	defer c.RUnlock()
 	for _, h := range c.handlers {
-		go func() {
-			response := h(ctx, event)
+		go func(handler input.Handler) {
+			response := handler(ctx, event)
 			if response != nil {
 				response.Data["channel_id"], _ = response.Request.Data["channel_id"].(string)
 				c.Send(ctx, response)
 			}
-		}()
+		}(h)
 	}
 }
 

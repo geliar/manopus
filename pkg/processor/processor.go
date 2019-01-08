@@ -31,7 +31,18 @@ type ProcessorConfig struct {
 	//MaxExecutionTime (optional) maximum time (in seconds) a step can execute for
 	MaxExecutionTime int64 `yaml:"max_execution_time"`
 	// Encoding of response (none, plain, json, json, toml)
-	Encoding string
+	Encoding string `yaml:"encoding"`
+	// Destination defines which output should be triggered with processor response
+	Destination string `yaml:"destination"`
+	//SkipCallback step should skip returning response to input requester
+	SkipCallback bool `yaml:"skip_callback"`
 	//Script will be executed by processor
 	Script interface{} `yaml:"script"`
+	//Export list of variables to be exported after execution of step
+	Export []struct {
+		//Current variable name in payload
+		Current string `yaml:"current"`
+		//New variable name in export part of payload
+		New string `yaml:"new"`
+	} `yaml:"export"`
 }

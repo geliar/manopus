@@ -54,8 +54,8 @@ func InitConfig(ctx context.Context, configs []string) (*Config, *sequencer.Sequ
 	}
 
 	var configBuffer []byte
+	log.Info().Strs("files", files).Msg("Reading config files")
 	for _, f := range files {
-		log.Info().Str("file", f).Msg("Reading config file")
 		buf, _ := ioutil.ReadFile(f)
 		configBuffer = append(configBuffer, buf...)
 		configBuffer = append(configBuffer, []byte("\n")...)

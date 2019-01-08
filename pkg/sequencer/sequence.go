@@ -19,7 +19,6 @@ func (s *Sequence) Match(ctx context.Context, defaultInputs []string, event *pay
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).
 		Int("sequence_step", s.step).Logger()
-	l.Debug().Msg("Matching")
 	newpayload := *(s.payload)
 	newpayload.Req = event.Data
 	ctx = l.WithContext(ctx)

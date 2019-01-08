@@ -18,9 +18,6 @@ type Sequencer struct {
 	Env map[string]interface{} `yaml:"env"`
 	//DefaultInputs the list of inputs which should be matched if inputs list in step is empty
 	DefaultInputs []string `yaml:"default_inputs"`
-	//DefaultOutputs the list of outputs which should be used to send responses
-	//if outputs list in step is empty
-	DefaultOutputs []output.OutputConfig `yaml:"default_outputs"`
 	//SequenceConfigs the list of sequence configs
 	SequenceConfigs []SequenceConfig `yaml:"sequences"`
 	queue           sequenceStack
@@ -61,35 +58,45 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response *p
 		ctx = l.WithContext(ctx)
 		l.Debug().
 			Msg("Event matched")
-
-		// Running specified processor
-		pc := seq.sequenceConfig.Steps[seq.step].Processor
 		var next processor.NextStatus
-		if pc.Type != "" && pc.Script != nil {
-			var res interface{}
-			runCtx := ctx
-			var cancel context.CancelFunc
-			if seq.sequenceConfig.Steps[seq.step].Timeout != 0 {
-				runCtx, cancel = context.WithTimeout(runCtx, time.Duration(seq.sequenceConfig.Steps[seq.step].Timeout)*time.Second)
-			}
-			res, next, _ = processor.Run(runCtx, &pc, seq.payload)
-			if cancel != nil {
-				cancel()
-			}
-			outputs := seq.sequenceConfig.Steps[seq.step].Outputs
-			if len(outputs) == 0 {
-				outputs = s.DefaultOutputs
-			}
-			//Sending requests to outputs
-			resp := s.prepareResponse(ctx, pc.Encoding, outputs, event, res)
-			s.sendToOutputs(ctx, outputs, resp)
-			if resp != nil {
-				if !seq.sequenceConfig.Steps[seq.step].SkipCallback {
-					response = resp
+		// Running specified processor
+		for _, pc := range seq.sequenceConfig.Steps[seq.step].Processors {
+			if pc.Type != "" && pc.Script != nil {
+				var res interface{}
+				runCtx := ctx
+				var cancel context.CancelFunc
+				if pc.MaxExecutionTime != 0 {
+					runCtx, cancel = context.WithTimeout(runCtx, time.Duration(pc.MaxExecutionTime)*time.Second)
 				}
-				seq.payload.Resp = resp.Data
+				res, next, _ = processor.Run(runCtx, &pc, seq.payload)
+				if cancel != nil {
+					cancel()
+				}
+
+				//Sending request to output
+				resp := s.prepareResponse(ctx, pc.Encoding, event, res)
+				if pc.Destination != "" {
+					s.sendToOutput(ctx, pc.Destination, resp)
+				}
+				if resp != nil {
+					if !pc.SkipCallback {
+						response = resp
+					}
+					seq.payload.Resp = resp.Data
+				}
+				for _, e := range pc.Export {
+					seq.payload.ExportField(ctx, e.Current, e.New)
+					l.Debug().
+						Str("export_current", e.Current).
+						Str("export_new", e.New).
+						Msg("Exported variable")
+				}
+				if next == processor.NextStopSequence {
+					break
+				}
 			}
 		}
+
 		if s.stop {
 			return
 		}
@@ -97,14 +104,6 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response *p
 		if next == processor.NextRepeatStep ||
 			(seq.step < len(seq.sequenceConfig.Steps)-1 &&
 				next != processor.NextStopSequence) {
-			//Exporting variables
-			for _, e := range seq.sequenceConfig.Steps[seq.step].Export {
-				seq.payload.ExportField(ctx, e.Current, e.New)
-				l.Debug().
-					Str("export_current", e.Current).
-					Str("export_new", e.New).
-					Msg("Exported variable")
-			}
 			//Pushing sequence back to queue but with incremented step number
 			if next != processor.NextRepeatStep {
 				seq.step++
@@ -133,7 +132,7 @@ func (s *Sequencer) Stop(ctx context.Context) {
 	defer s.Unlock()
 }
 
-func (s *Sequencer) prepareResponse(ctx context.Context, encoding string, outputs []output.OutputConfig, req *payload.Event, res interface{}) (response *payload.Response) {
+func (s *Sequencer) prepareResponse(ctx context.Context, encoding string, req *payload.Event, res interface{}) (response *payload.Response) {
 	l := logger(ctx)
 	// Decoding response
 	var resp map[string]interface{}
@@ -161,7 +160,7 @@ func (s *Sequencer) prepareResponse(ctx context.Context, encoding string, output
 		case "json":
 			err := json.Unmarshal(buf, &resp)
 			if err != nil {
-				l.Error().
+				l.Warn().
 					Err(err).
 					Str("response_data", string(buf)).
 					Msg("Cannot unmarshal JSON response returned from processor")
@@ -170,7 +169,7 @@ func (s *Sequencer) prepareResponse(ctx context.Context, encoding string, output
 		case "toml":
 			err := toml.Unmarshal(buf, &resp)
 			if err != nil {
-				l.Error().
+				l.Warn().
 					Err(err).
 					Str("response_data", string(buf)).
 					Msg("Cannot unmarshal TOML response returned from processor")
@@ -199,17 +198,13 @@ func (s *Sequencer) prepareResponse(ctx context.Context, encoding string, output
 	}
 }
 
-func (s *Sequencer) sendToOutputs(ctx context.Context, outputs []output.OutputConfig, response *payload.Response) {
+func (s *Sequencer) sendToOutput(ctx context.Context, destination string, response *payload.Response) {
 	if response == nil {
 		return
 	}
-	for _, o := range outputs {
-		l := logger(ctx).With().Str("output_destination", o.Destination).
-			Str("output_type", o.Type).
-			Str("output_encoding", response.Encoding).Logger()
-		response.Type = o.Type
-		output.Send(l.WithContext(ctx), o.Destination, response)
-	}
+	l := logger(ctx).With().Str("output_destination", destination).
+		Str("response_encoding", response.Encoding).Logger()
+	output.Send(l.WithContext(ctx), destination, response)
 }
 
 func (s *Sequencer) pushnew(sc SequenceConfig) {

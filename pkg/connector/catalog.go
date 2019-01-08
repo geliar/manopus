@@ -47,6 +47,6 @@ func (c *catalogStore) configure(ctx context.Context, name string, connector Con
 	if _, ok := c.connectors[connector.Type]; ok {
 		c.connectors[connector.Type](ctx, name, connector.Config)
 	} else {
-		l.Error().Msgf("Cannot find connector with type '%s'", connector.Type)
+		l.Warn().Msgf("Cannot find connector with type '%s'", connector.Type)
 	}
 }

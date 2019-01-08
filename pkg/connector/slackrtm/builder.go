@@ -15,9 +15,7 @@ import (
 
 func init() {
 	ctx := log.Logger.WithContext(context.Background())
-	l := logger(ctx)
-	l.Debug().Msg("Registering connector in the catalog")
-	connector.Register(l.WithContext(ctx), connectorName, builder)
+	connector.Register(ctx, connectorName, builder)
 }
 
 type slackLogger struct {
@@ -33,7 +31,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	l := logger(ctx)
 	l = l.With().Str("connector_name", name).Logger()
 	ctx = l.WithContext(ctx)
-	l.Debug().Msg("Registering input in the registry")
+	l.Debug().Msgf("Initializing new instance of %s", connectorName)
 	i := new(SlackRTM)
 	i.created = time.Now().UnixNano()
 	i.name = name

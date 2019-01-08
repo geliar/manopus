@@ -2,7 +2,6 @@ package sequencer
 
 import (
 	"github.com/geliar/manopus/pkg/matcher"
-	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/processor"
 )
 
@@ -26,17 +25,6 @@ type StepConfig struct {
 	Match []matcher.MatchConfig `yaml:"match"`
 	//Timeout (optional) time (in seconds) to cancel sequence if step is waiting longer
 	Timeout int64 `yaml:"timeout"`
-	//Export list of variables to be exported after execution of step
-	Export []struct {
-		//Current variable name in payload
-		Current string `yaml:"current"`
-		//New variable name in export part of payload
-		New string `yaml:"new"`
-	} `yaml:"export"`
-	//Processor description of processor to run on event
-	Processor processor.ProcessorConfig `yaml:"processor"`
-	//Outputs list of outputs to be requested after processor
-	Outputs []output.OutputConfig `yaml:"outputs"`
-	//SkipCallback step should skip returning response to input requester
-	SkipCallback bool `yaml:"skip_callback"`
+	//Processors list of processors to run on event
+	Processors []processor.ProcessorConfig `yaml:"processors"`
 }

@@ -52,11 +52,11 @@ func (c *catalogStore) registerHandlerAll(ctx context.Context, handler Handler) 
 	l := logger(ctx)
 
 	for i := range c.inputs {
-		l.Info().
+		c.inputs[i].RegisterHandler(ctx, handler)
+		l.Debug().
 			Str("input_driver_name", c.inputs[i].Name()).
 			Str("input_driver_type", c.inputs[i].Type()).
-			Msgf("Registering handler to input")
-		c.inputs[i].RegisterHandler(ctx, handler)
+			Msgf("Registered handler to input")
 	}
 }
 

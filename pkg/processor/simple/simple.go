@@ -16,8 +16,6 @@ import (
 
 func init() {
 	ctx := log.Logger.WithContext(context.Background())
-	l := logger(ctx)
-	l.Debug().Msg("Registering processor in the catalog")
 	processor.Register(ctx, new(Simple))
 }
 
