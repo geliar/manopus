@@ -7,5 +7,7 @@ connectors:
       channels: *slack_channels
       bot_icon_url:
       bot_icon_emoji: *slack_bot_icon
+  http:
+    type: http
   cli:
     type: cli
