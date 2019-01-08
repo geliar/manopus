@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/geliar/manopus/pkg/log"
 )
@@ -50,9 +49,6 @@ func (s *HTTPServer) Stop(ctx context.Context) {
 		log.Fatal().Msg("Trying to shutdown not started HTTP server")
 	}
 	l.Info().Msg("Shutting down HTTP server")
-	if s.config.ShutdownTimeout != 0 {
-		ctx, _ = context.WithTimeout(ctx, time.Duration(s.config.ShutdownTimeout)*time.Second)
-	}
 	err := s.instance.Shutdown(ctx)
 	if err != nil {
 		l.Error().Err(err).Msg("Didn't manage to shutdown HTTP server gracefully")

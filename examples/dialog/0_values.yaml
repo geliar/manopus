@@ -1,5 +1,5 @@
-# var will not be parsed, its just to consolidate variables for manifest
-var:
+shutdown_timeout: 10 #time to let sequencer finish running sequences
+var: # var will not be parsed, its just to consolidate variables for manifest
   slack_token: &slack_token ""
   slack_channels: &slack_channels
     - "test-bot"

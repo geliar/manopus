@@ -22,6 +22,8 @@ func init() {
 
 // Config contains structure of the Manopus manifest
 type Config struct {
+	//ShutdownTimeout timeout of graceful shutdown
+	ShutdownTimeout int `yaml:"shutdown_timeout"`
 	//Connectors describe connectors structure
 	Connectors map[string]connector.ConnectorConfig `yaml:"connectors"`
 	//Sequencer config
@@ -30,9 +32,12 @@ type Config struct {
 	HTTP http.HTTPConfig
 }
 
-func InitConfig(ctx context.Context, configs []string) (*sequencer.Sequencer, *http.HTTPServer) {
+func InitConfig(ctx context.Context, configs []string) (*Config, *sequencer.Sequencer, *http.HTTPServer) {
 	l := logger(ctx)
 	var files []string
+	if len(configs) == 0 {
+		return nil, nil, nil
+	}
 	for _, name := range configs {
 		err := filepath.Walk(name,
 			func(path string, info os.FileInfo, err error) error {
@@ -66,5 +71,5 @@ func InitConfig(ctx context.Context, configs []string) (*sequencer.Sequencer, *h
 	c.Sequencer.Init(ctx)
 	input.RegisterHandlerAll(ctx, c.Sequencer.Roll)
 	h := http.Init(ctx, c.HTTP)
-	return &c.Sequencer, h
+	return &c, &c.Sequencer, h
 }

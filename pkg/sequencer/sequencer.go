@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"time"
 
 	toml "github.com/BurntSushi/toml"
 
@@ -38,6 +39,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 	l := logger(ctx).With().
 		Str("event_input", event.Input).
 		Str("event_type", event.Type).
+		Str("event_id", event.ID).
 		Logger()
 	s.RLock()
 	defer s.RUnlock()
@@ -66,8 +68,15 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 		var next processor.NextStatus
 		if pc.Type != "" && pc.Script != nil {
 			var res interface{}
-			res, next, _ = processor.Run(ctx, &pc, seq.payload)
-
+			runCtx := ctx
+			var cancel context.CancelFunc
+			if seq.sequenceConfig.Steps[seq.step].Timeout != 0 {
+				runCtx, cancel = context.WithTimeout(runCtx, time.Duration(seq.sequenceConfig.Steps[seq.step].Timeout)*time.Second)
+			}
+			res, next, _ = processor.Run(runCtx, &pc, seq.payload)
+			if cancel != nil {
+				cancel()
+			}
 			outputs := seq.sequenceConfig.Steps[seq.step].Outputs
 			if len(outputs) == 0 {
 				outputs = s.DefaultOutputs
@@ -76,7 +85,9 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 			response := s.sendToOutputs(ctx, pc.Encoding, outputs, event, res)
 			seq.payload.Resp = response
 		}
-
+		if s.stop {
+			return
+		}
 		//If this step is not last
 		if next == processor.NextRepeatStep ||
 			(seq.step < len(seq.sequenceConfig.Steps)-1 &&
@@ -111,8 +122,8 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 func (s *Sequencer) Stop(ctx context.Context) {
 	l := logger(ctx)
 	l.Info().Msg("Shutting down sequencer")
-	s.Lock()
 	s.stop = true
+	s.Lock()
 	defer s.Unlock()
 }
 

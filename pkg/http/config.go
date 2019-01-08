@@ -1,6 +1,6 @@
 package http
 
 type HTTPConfig struct {
-	Listen          string `yaml:"listen"`
-	ShutdownTimeout int    `yaml:"shutdown_timeout"`
+	// Listen address and port
+	Listen string `yaml:"listen"`
 }

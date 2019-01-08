@@ -3,6 +3,7 @@ package bash
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -34,13 +35,33 @@ func (p *Bash) Run(ctx context.Context, config *processor.ProcessorConfig, paylo
 	if script == "" {
 		return nil, processor.NextStopSequence, processor.ErrParseScript
 	}
-	cmd := exec.Command("/bin/bash", "/dev/stdin")
+
+	cmd := exec.CommandContext(ctx, "/bin/bash", "/dev/stdin")
 	cmd.Env = os.Environ()
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		l.Error().Err(err).Msg("Cannot open stdin of executing process")
 		return nil, processor.NextStopSequence, err
 	}
+	stdout, err := cmd.StdoutPipe()
+	var stdoutBuf []byte
+	stdoutReadCh := make(chan struct{})
+	go func() {
+		stdoutBuf, err = ioutil.ReadAll(stdout)
+		if err != nil {
+			l.Error().Err(err).Msg("Cannot read stdout of executing process")
+		}
+		stdoutReadCh <- struct{}{}
+	}()
+	if err != nil {
+		l.Error().Err(err).Msg("Cannot open stdout of executing process")
+		return nil, processor.NextStopSequence, err
+	}
+	go func() {
+		<-ctx.Done()
+		_ = stdin.Close()
+		_ = stdout.Close()
+	}()
 	pp := preparePayload("ENV_", payload.Env)
 	pp += preparePayload("MATCH_", payload.Match)
 	pp += preparePayload("EXPORT_", payload.Export)
@@ -50,12 +71,19 @@ func (p *Bash) Run(ctx context.Context, config *processor.ProcessorConfig, paylo
 		_, _ = stdin.Write([]byte(script))
 		_ = stdin.Close()
 	}()
-	buf, err := cmd.Output()
+	err = cmd.Start()
+	if err != nil {
+		l.Error().Err(err).Msg("Cannot start the script")
+		return nil, processor.NextStopSequence, err
+	}
+
+	err = cmd.Wait()
 	if err != nil {
 		next = processor.NextStopSequence
 		l.Debug().Err(err).Msg("Error when executing script")
 	}
-	return string(buf), next, err
+	<-stdoutReadCh
+	return string(stdoutBuf), next, err
 }
 
 func (Bash) collectScript(ctx context.Context, script interface{}) (result string) {

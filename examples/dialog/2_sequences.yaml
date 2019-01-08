@@ -59,6 +59,20 @@ sequencer:
             encoding: plain
             script:
               - echo $MATCH_MSG
+    - name: sleeping sequence
+      steps:
+      - name: sleep
+        timeout: 60
+        match:
+          - field: req.message
+            regexp: '^sleep\((?P<duration>.*)\)'
+        processor:
+          type: bash
+          encoding: plain
+          script:
+            - trap 'echo "SIGINT has been received"' SIGINT
+            - sleep $MATCH_DURATION
+            - echo Was sleeping for $MATCH_DURATION seconds
     - name: request debug sequence
       steps:
         - name: debug

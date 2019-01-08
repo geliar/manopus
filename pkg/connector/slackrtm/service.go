@@ -62,6 +62,22 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 		Str("input_event_id", response.Request.ID).
 		Msg("Received Send event")
 	var chid, text string
+
+	switch v := response.Data["data"].(type) {
+	case string:
+		text = v
+	case []byte:
+		text = string(v)
+	default:
+		l.Error().Msg("Unknown type of 'data' field of response")
+		return
+	}
+	if text == "" {
+		l.Debug().
+			Msg("Text field is empty")
+		return
+	}
+
 	switch response.Type {
 	case "callback":
 		if response.Request.Input != c.Name() {
@@ -83,20 +99,6 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 		return
 	}
 
-	switch v := response.Data["data"].(type) {
-	case string:
-		text = v
-	case []byte:
-		text = string(v)
-	default:
-		l.Error().Msg("Unknown type of 'data' field of response")
-		return
-	}
-	if text == "" {
-		l.Error().
-			Msg("Text field is empty")
-		return
-	}
 	var attachments []slack.Attachment
 	switch v := response.Data["attachments"].(type) {
 	case []interface{}:
@@ -165,8 +167,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 		case *slack.RTMError:
 			l.Debug().Err(ev).Msgf("Error: %s\n", ev.Error())
 		case *slack.InvalidAuthEvent:
-			l.Debug().Msgf("Invalid credentials")
-			_ = c.rtm.Disconnect()
+			l.Fatal().Msgf("Invalid credentials")
 			return
 		case *slack.DisconnectedEvent:
 			l.Debug().Msgf("Disconnected event received")
@@ -185,11 +186,12 @@ func (c *SlackRTM) serve(ctx context.Context) {
 
 func (c *SlackRTM) Stop(ctx context.Context) {
 	c.Lock()
-	defer c.Unlock()
 	if c.stop {
+		c.Unlock()
 		return
 	}
 	c.stop = true
+	c.Unlock()
 	if c.rtm != nil {
 		_ = c.rtm.Disconnect()
 	}
