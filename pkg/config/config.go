@@ -34,6 +34,7 @@ type Config struct {
 
 func InitConfig(ctx context.Context, configs []string) (*Config, *sequencer.Sequencer, *http.HTTPServer) {
 	l := logger(ctx)
+
 	var files []string
 	if len(configs) == 0 {
 		return nil, nil, nil
@@ -61,15 +62,22 @@ func InitConfig(ctx context.Context, configs []string) (*Config, *sequencer.Sequ
 	}
 
 	var c Config
+
 	if err := yaml.Unmarshal(configBuffer, &c); err != nil {
 		l.Fatal().Err(err).Msg("Cannot parse config files")
 	}
+
+	//HTTP server
+	h := http.Init(ctx, c.HTTP)
+
+	//Connectors
 	for i := range c.Connectors {
 		connector.Configure(ctx, i, c.Connectors[i])
 	}
 
+	//Sequencer
 	c.Sequencer.Init(ctx)
 	input.RegisterHandlerAll(ctx, c.Sequencer.Roll)
-	h := http.Init(ctx, c.HTTP)
+
 	return &c, &c.Sequencer, h
 }

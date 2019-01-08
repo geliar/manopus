@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/payload"
 )
 
@@ -15,7 +14,7 @@ type Sequence struct {
 	latestMatch    time.Time
 }
 
-func (s *Sequence) Match(ctx context.Context, defaultInputs []string, event *input.Event) bool {
+func (s *Sequence) Match(ctx context.Context, defaultInputs []string, event *payload.Event) bool {
 	l := logger(ctx)
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).

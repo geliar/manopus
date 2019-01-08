@@ -33,6 +33,10 @@ type StepConfig struct {
 		//New variable name in export part of payload
 		New string `yaml:"new"`
 	} `yaml:"export"`
+	//Processor description of processor to run on event
 	Processor processor.ProcessorConfig `yaml:"processor"`
-	Outputs   []output.OutputConfig     `yaml:"outputs"`
+	//Outputs list of outputs to be requested after processor
+	Outputs []output.OutputConfig `yaml:"outputs"`
+	//SkipCallback step should skip returning response to input requester
+	SkipCallback bool `yaml:"skip_callback"`
 }

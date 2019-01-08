@@ -6,9 +6,8 @@ import (
 	"sync"
 	"time"
 
-	toml "github.com/BurntSushi/toml"
+	"github.com/BurntSushi/toml"
 
-	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/payload"
 	"github.com/geliar/manopus/pkg/processor"
@@ -35,7 +34,7 @@ func (s *Sequencer) Init(ctx context.Context) {
 	}
 }
 
-func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
+func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response *payload.Response) {
 	l := logger(ctx).With().
 		Str("event_input", event.Input).
 		Str("event_type", event.Type).
@@ -82,8 +81,14 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 				outputs = s.DefaultOutputs
 			}
 			//Sending requests to outputs
-			response := s.sendToOutputs(ctx, pc.Encoding, outputs, event, res)
-			seq.payload.Resp = response
+			resp := s.prepareResponse(ctx, pc.Encoding, outputs, event, res)
+			s.sendToOutputs(ctx, outputs, resp)
+			if resp != nil {
+				if !seq.sequenceConfig.Steps[seq.step].SkipCallback {
+					response = resp
+				}
+				seq.payload.Resp = resp.Data
+			}
 		}
 		if s.stop {
 			return
@@ -117,6 +122,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *input.Event) {
 			l.Debug().Msg("Sequence is finished. Creating new.")
 		}
 	}
+	return
 }
 
 func (s *Sequencer) Stop(ctx context.Context) {
@@ -127,10 +133,10 @@ func (s *Sequencer) Stop(ctx context.Context) {
 	defer s.Unlock()
 }
 
-func (s *Sequencer) sendToOutputs(ctx context.Context, encoding string, outputs []output.OutputConfig, req *input.Event, res interface{}) (resp map[string]interface{}) {
+func (s *Sequencer) prepareResponse(ctx context.Context, encoding string, outputs []output.OutputConfig, req *payload.Event, res interface{}) (response *payload.Response) {
 	l := logger(ctx)
 	// Decoding response
-
+	var resp map[string]interface{}
 	switch encoding {
 	case "none":
 		var ok bool
@@ -157,6 +163,7 @@ func (s *Sequencer) sendToOutputs(ctx context.Context, encoding string, outputs 
 			if err != nil {
 				l.Error().
 					Err(err).
+					Str("response_data", string(buf)).
 					Msg("Cannot unmarshal JSON response returned from processor")
 				return
 			}
@@ -165,6 +172,7 @@ func (s *Sequencer) sendToOutputs(ctx context.Context, encoding string, outputs 
 			if err != nil {
 				l.Error().
 					Err(err).
+					Str("response_data", string(buf)).
 					Msg("Cannot unmarshal TOML response returned from processor")
 				return
 			}
@@ -182,20 +190,26 @@ func (s *Sequencer) sendToOutputs(ctx context.Context, encoding string, outputs 
 			Msg("Wrong encoding")
 		return
 	}
-	for _, o := range outputs {
-		l = logger(ctx).With().Str("output_destination", o.Destination).
-			Str("output_type", o.Type).
-			Str("output_encoding", encoding).Logger()
-		response := output.Response{
-			ID:       req.ID,
-			Request:  req,
-			Type:     o.Type,
-			Encoding: encoding,
-			Data:     resp,
-		}
-		output.Send(ctx, o.Destination, &response)
+
+	return &payload.Response{
+		ID:       req.ID,
+		Request:  req,
+		Encoding: encoding,
+		Data:     resp,
 	}
-	return resp
+}
+
+func (s *Sequencer) sendToOutputs(ctx context.Context, outputs []output.OutputConfig, response *payload.Response) {
+	if response == nil {
+		return
+	}
+	for _, o := range outputs {
+		l := logger(ctx).With().Str("output_destination", o.Destination).
+			Str("output_type", o.Type).
+			Str("output_encoding", response.Encoding).Logger()
+		response.Type = o.Type
+		output.Send(l.WithContext(ctx), o.Destination, response)
+	}
 }
 
 func (s *Sequencer) pushnew(sc SequenceConfig) {

@@ -1,6 +1,10 @@
 package input
 
-import "context"
+import (
+	"context"
+
+	"github.com/geliar/manopus/pkg/payload"
+)
 
 type Driver interface {
 	Name() string
@@ -9,11 +13,4 @@ type Driver interface {
 	Stop(ctx context.Context)
 }
 
-type Handler func(ctx context.Context, event *Event)
-
-type Event struct {
-	Input string
-	Type  string
-	ID    string
-	Data  map[string]interface{}
-}
+type Handler func(ctx context.Context, event *payload.Event) (response *payload.Response)

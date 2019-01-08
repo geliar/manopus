@@ -8,10 +8,10 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/geliar/manopus/pkg/payload"
+
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/log"
-	"github.com/geliar/manopus/pkg/output"
-
 	"github.com/nlopes/slack"
 )
 
@@ -55,7 +55,7 @@ func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.handlers = append(c.handlers, handler)
 }
 
-func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
+func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 	l := logger(ctx)
 	l.Debug().
 		Str("input_name", response.Request.Input).
@@ -78,21 +78,7 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 		return
 	}
 
-	switch response.Type {
-	case "callback":
-		if response.Request.Input != c.Name() {
-			l.Error().Msg("Cannot process callback response from different input")
-			return
-		}
-		chid, _ = response.Request.Data["channel_id"].(string)
-	case "message", "":
-		chid = c.getChannelID(ctx, response)
-	default:
-		l.Error().
-			Str("response_type", response.Type).
-			Msg("Unsupported response type")
-		return
-	}
+	chid = c.getChannelID(ctx, response)
 
 	if chid == "" {
 		l.Error().Msg("Cannot determine channel_id")
@@ -116,6 +102,20 @@ func (c *SlackRTM) Send(ctx context.Context, response *output.Response) {
 		}
 	}
 	c.sendToChannel(ctx, chid, attachments, text)
+}
+
+func (c *SlackRTM) Stop(ctx context.Context) {
+	c.Lock()
+	if c.stop {
+		c.Unlock()
+		return
+	}
+	c.stop = true
+	c.Unlock()
+	if c.rtm != nil {
+		_ = c.rtm.Disconnect()
+	}
+	<-c.stopped
 }
 
 func (c *SlackRTM) serve(ctx context.Context) {
@@ -144,7 +144,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 			l.Debug().Msgf("Message: %v\n", ev)
 			// Only text messages from real users
 			if ev.User != "" && ev.SubType == "" {
-				e := &input.Event{
+				e := &payload.Event{
 					Input: c.name,
 					Type:  connectorName,
 					ID:    c.getID(),
@@ -184,25 +184,17 @@ func (c *SlackRTM) serve(ctx context.Context) {
 	}
 }
 
-func (c *SlackRTM) Stop(ctx context.Context) {
-	c.Lock()
-	if c.stop {
-		c.Unlock()
-		return
-	}
-	c.stop = true
-	c.Unlock()
-	if c.rtm != nil {
-		_ = c.rtm.Disconnect()
-	}
-	<-c.stopped
-}
-
-func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *input.Event) {
+func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *payload.Event) {
 	c.RLock()
 	defer c.RUnlock()
 	for _, h := range c.handlers {
-		go h(ctx, event)
+		go func() {
+			response := h(ctx, event)
+			if response != nil {
+				response.Data["channel_id"], _ = response.Request.Data["channel_id"].(string)
+				c.Send(ctx, response)
+			}
+		}()
 	}
 }
 
@@ -398,12 +390,7 @@ func (c *SlackRTM) sendToChannel(ctx context.Context, channel string, attachment
 	}
 }
 
-func (c *SlackRTM) getID() string {
-	id := atomic.AddInt64(&c.id, 1)
-	return fmt.Sprintf("%s-%d-%d", c.name, c.created, id)
-}
-
-func (c *SlackRTM) getChannelID(ctx context.Context, response *output.Response) string {
+func (c *SlackRTM) getChannelID(ctx context.Context, response *payload.Response) string {
 	if chID, ok := response.Data["channel_id"].(string); ok && chID != "" {
 		return chID
 	}
@@ -432,4 +419,9 @@ func (c *SlackRTM) getChannelID(ctx context.Context, response *output.Response) 
 		}
 	}
 	return ""
+}
+
+func (c *SlackRTM) getID() string {
+	id := atomic.AddInt64(&c.id, 1)
+	return fmt.Sprintf("%s-%d-%d", c.name, c.created, id)
 }

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/geliar/manopus/pkg/input"
+	"github.com/geliar/manopus/pkg/payload"
 )
 
 type contextElement struct {
@@ -40,7 +40,7 @@ func (s *sequenceStack) Exists(sequence *Sequence) bool {
 }
 
 // Match matching event with sequences in stack, pops and returns first matched sequence
-func (s *sequenceStack) Match(ctx context.Context, defaultInputs []string, event *input.Event) (sequences []*Sequence) {
+func (s *sequenceStack) Match(ctx context.Context, defaultInputs []string, event *payload.Event) (sequences []*Sequence) {
 	s.Lock()
 	defer s.Unlock()
 	elem := s.first

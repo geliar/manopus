@@ -3,6 +3,8 @@ package output
 import (
 	"context"
 	"sync"
+
+	"github.com/geliar/manopus/pkg/payload"
 )
 
 type catalogStore struct {
@@ -16,7 +18,7 @@ func Register(ctx context.Context, name string, driver Driver) {
 	catalog.register(ctx, name, driver)
 }
 
-func Send(ctx context.Context, output string, response *Response) {
+func Send(ctx context.Context, output string, response *payload.Response) {
 	catalog.send(ctx, output, response)
 }
 
@@ -46,7 +48,7 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Driver)
 		Msg("Registered new output driver")
 }
 
-func (c *catalogStore) send(ctx context.Context, output string, response *Response) {
+func (c *catalogStore) send(ctx context.Context, output string, response *payload.Response) {
 	c.RLock()
 	l := logger(ctx)
 	if _, ok := c.outputs[output]; !ok {

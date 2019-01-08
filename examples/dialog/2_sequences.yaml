@@ -8,8 +8,6 @@ sequencer:
     - slack
   # List of outputs to be applied to step without specified outputs list
   default_outputs:
-    - destination: slack
-      type: callback
   # List of configurations of sequences
   sequences:
     - name: greating sequence # Name of the sequence for logs (optional)
@@ -53,12 +51,25 @@ sequencer:
         - name: repeat
           match:
             - field: req.message
-              regexp: '^Repeat: (?P<msg>.*)'
+              regexp: '^(@.* )Repeat: (?P<msg>.*)'
           processor:
             type: bash
             encoding: plain
             script:
               - echo $MATCH_MSG
+    - name: always direct response
+      steps:
+        - match:
+            - field: req.message
+              regexp: '^(@.* )Direct: (?P<msg>.*)'
+          skip_callback: true
+          processor:
+            type: bash
+            encoding: json
+            script:
+              - 'echo "{\"data\":\"$MATCH_MSG\",\"user_id\":\"$REQ_USER_ID\"}"'
+          outputs:
+            - destination: slack
     - name: sleeping sequence
       steps:
       - name: sleep
@@ -83,7 +94,7 @@ sequencer:
                 - field: req.mentioned
                   value: true
             - field: req.message
-              regexp: 'Debug$'
+              regexp: '(@.* )Debug$'
           processor:
             type: bash
             encoding: plain
