@@ -135,8 +135,6 @@ sequencer:
           inputs:
             - http
           match:
-            - field: req.http_method
-              value: "GET"
             - field: req.http_uri
               regexp: '^/debug'
           processors:
@@ -165,6 +163,32 @@ sequencer:
               encoding: plain
               script:
                 - 'echo "Sent \"$MATCH_MSG\" to \"$MATCH_USER\""'
+    - name: Message from HTTP with JSON to Slack
+      steps:
+        - inputs:
+            - http
+          match:
+            - field: req.http_uri
+              regexp: '^/message-json'
+            - field: req.http_method
+              value: "POST"
+            - field: req.http_json.message
+              value: ''
+              negative: true
+            - field: req.http_json.user
+              value: ''
+              negative: true
+          processors:
+            - type: bash
+              encoding: json
+              destination: slack
+              skip_callback: true
+              script:
+                - 'echo "{\"data\":\"$REQ_HTTP_JSON_MESSAGE\",\"user_name\":\"$REQ_HTTP_JSON_USER\"}"'
+            - type: bash
+              encoding: plain
+              script:
+                - 'echo "Sent \"$REQ_HTTP_JSON_MESSAGE\" to \"$REQ_HTTP_JSON_USER\""'
     - name: Debug in JSON
       steps:
         - inputs:

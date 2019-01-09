@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"sync"
@@ -56,19 +57,46 @@ func (c *HTTP) Stop(ctx context.Context) {
 func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := logger(r.Context())
 	_ = r.ParseForm()
+	var buf []byte
+	func() {
+		var err error
+		buf, err = ioutil.ReadAll(r.Body)
+		defer func() { _ = r.Body.Close() }()
+		if err != nil {
+			if err != nil {
+				l.Error().Err(err).Msg("Cannot read HTTP request body")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+	}()
 	e := payload.Event{
 		ID:    c.getID(),
 		Type:  connectorName,
 		Input: c.name,
 		Data: map[string]interface{}{
 			"http_method":       r.Method,
+			"http_host":         r.Host,
+			"http_remote_addr":  r.RemoteAddr,
 			"http_uri":          r.RequestURI,
 			"http_form":         r.Form,
 			"http_content_type": r.Header.Get("Content-Type"),
-			"http_referer":      r.Header.Get("Referer"),
-			"http_user_agent":   r.Header.Get("User-Agent"),
+			"http_referer":      r.Referer(),
+			"http_user_agent":   r.UserAgent(),
 			"http_headers":      map[string][]string(r.Header),
+			"http_body":         buf,
 		},
+	}
+	switch r.Header.Get("Content-Type") {
+	case "application/json":
+		var v map[string]interface{}
+		err := json.Unmarshal(buf, &v)
+		if err != nil {
+			l.Error().Err(err).Msg("Cannot unmarshal JSON request")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		e.Data["http_json"] = v
 	}
 	c.RLock()
 	defer c.RUnlock()
@@ -76,7 +104,6 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if response == nil {
 		return
 	}
-	var buf []byte
 	if response.Data["data"] == nil {
 		return
 	}
