@@ -175,7 +175,7 @@ sequencer:
           processors:
             - type: bash
               encoding: toml
-              script: ( set -o posix ; set ) | grep 'REQ_\|ENV_\|MATCH_' | sed "s/\(.*\)=\(.*\)/\1=\"\2\"/g"
+              script: echo "http_code = 201"; echo "[data]"; ( set -o posix ; set ) | grep 'REQ_\|ENV_\|MATCH_' | sed "s/'//g" | sed -e "s/\(.*\)=\(.*\)/\1 = \"\2\"/g"
     - steps:
       - inputs:
           - cli

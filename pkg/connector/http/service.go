@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -64,6 +65,9 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"http_uri":          r.RequestURI,
 			"http_form":         r.Form,
 			"http_content_type": r.Header.Get("Content-Type"),
+			"http_referer":      r.Header.Get("Referer"),
+			"http_user_agent":   r.Header.Get("User-Agent"),
+			"http_headers":      map[string][]string(r.Header),
 		},
 	}
 	c.RLock()
@@ -73,26 +77,45 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var buf []byte
-	switch response.Encoding {
-	case "none", "plain":
-		switch v := response.Data["data"].(type) {
-		case string:
-			buf = []byte(v)
-		case []byte:
-			buf = v
-		default:
-			l.Error().Msg("Unknown type of 'data' field of response")
-			return
-		}
-	default:
+	if response.Data["data"] == nil {
+		return
+	}
+	switch v := response.Data["data"].(type) {
+	case string:
+		buf = []byte(v)
+	case []byte:
+		buf = v
+	case map[string]interface{}, []string, []int, []interface{}:
 		var err error
-		buf, err = json.Marshal(response.Data)
+		buf, err = json.Marshal(response.Data["data"])
 		if err != nil {
 			l.Error().
 				Err(err).
 				Msg("Error when marshaling response to JSON")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
+		w.Header().Set("Content-Type", "application/json")
+	default:
+		l.Error().Msgf("Unknown type of 'data' field of response %T", response.Data["data"])
+		return
 	}
+
+	if contentType, ok := response.Data["http_content_type"].(string); ok {
+		w.Header().Set("Content-Type", contentType)
+	}
+
+	switch v := response.Data["http_code"].(type) {
+	case string:
+		if code, err := strconv.Atoi(v); err != nil {
+			w.WriteHeader(code)
+		}
+	case int:
+		w.WriteHeader(v)
+	case int64:
+		w.WriteHeader(int(v))
+	}
+
 	_, err := w.Write(buf)
 	if err != nil {
 		l.Error().
