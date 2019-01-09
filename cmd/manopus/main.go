@@ -21,6 +21,7 @@ var help = flag.BoolP("help", "h", false, "Show this page")
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = log.Logger.WithContext(ctx)
 
 	flag.Parse()
