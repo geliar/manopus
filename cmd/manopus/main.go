@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,20 +13,38 @@ import (
 	"github.com/geliar/manopus/pkg/log"
 	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/sequencer"
+
+	flag "github.com/ogier/pflag"
 )
+
+var help = flag.BoolP("help", "h", false, "Show this page")
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = log.Logger.WithContext(ctx)
 
-	log.Info().Msg("Starting Manopus...")
 	flag.Parse()
 	configFiles := flag.Args()
+
+	if *help || len(configFiles) == 0 {
+		showUsage()
+		return
+	}
+
+	log.Info().Msg("Starting Manopus...")
+
 	cfg, sequencerInstance, httpServer := config.InitConfig(ctx, configFiles)
 	if cfg == nil || sequencerInstance == nil {
 		log.Fatal().Msg("No configuration provided")
 	}
 	wait(ctx, cancel, cfg, sequencerInstance, httpServer)
+}
+
+func showUsage() {
+	println("Usage: " + os.Args[0] + " [options] [config files or dirs]...")
+	println("Starts Manopus omnichannel automation bot\n")
+	println("Options and flags:")
+	println("  -h, --help: Show this page")
 }
 
 func wait(ctx context.Context, cancel context.CancelFunc, cfg *config.Config, sequencerInstance *sequencer.Sequencer, httpServer *http.HTTPServer) {

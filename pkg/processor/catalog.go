@@ -39,7 +39,7 @@ func (c *catalogStore) register(ctx context.Context, processor Processor) {
 			Msg("Cannot register processor with existing name")
 	}
 	c.processors[processor.Type()] = processor
-	l.Info().
+	l.Debug().
 		Msg("Registered new processor")
 }
 

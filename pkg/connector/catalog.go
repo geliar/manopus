@@ -35,7 +35,7 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Builder
 			Msg("Trying to register connector with existing name")
 	}
 	c.connectors[name] = driver
-	l.Info().
+	l.Debug().
 		Msg("Registered new connector")
 }
 
