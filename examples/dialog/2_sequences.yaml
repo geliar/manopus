@@ -136,7 +136,7 @@ sequencer:
             - http
           match:
             - field: req.http_uri
-              regexp: '^/debug'
+              regexp: ^/debug
           processors:
             - type: bash
               encoding: plain
@@ -147,37 +147,35 @@ sequencer:
             - http
           match:
             - field: req.http_uri
-              regexp: '^/message'
+              regexp: ^/message
             - field: req.http_form.message.0
-              regexp: '(?P<msg>.*)'
+              regexp: (?P<msg>.*)
             - field: req.http_form.user.0
-              regexp: '(?P<user>.*)'
+              regexp: (?P<user>.*)
           processors:
             - type: bash
               encoding: json
               destination: slack
               skip_callback: true
               script:
-                - 'echo "{\"data\":\"$MATCH_MSG\",\"user_name\":\"$MATCH_USER\"}"'
+                - echo "{\"data\":\"$MATCH_MSG\",\"user_name\":\"$MATCH_USER\"}"
             - type: bash
               encoding: plain
               script:
-                - 'echo "Sent \"$MATCH_MSG\" to \"$MATCH_USER\""'
+                - echo "Sent \"$MATCH_MSG\" to \"$MATCH_USER\""
     - name: Message from HTTP with JSON to Slack
       steps:
         - inputs:
             - http
           match:
             - field: req.http_uri
-              regexp: '^/message-json'
+              regexp: ^/message-json
             - field: req.http_method
-              value: "POST"
+              value: POST
             - field: req.http_json.message
-              value: ''
-              negative: true
+              operator: "not_empty"
             - field: req.http_json.user
-              value: ''
-              negative: true
+              operator: "not_empty"
           processors:
             - type: bash
               encoding: json

@@ -487,6 +487,214 @@ match:
 			},
 			false,
 		},
+		{"OperatorStringEmptyMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": ""},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": ""},
+			},
+			true,
+		},
+		{"OperatorStringEmptyNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "qwe"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "qwe"},
+			},
+			false,
+		},
+		{"OperatorStringNotEmptyMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "qwe"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: not_empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "qwe"},
+			},
+			true,
+		},
+		{"OperatorStringNotEmptyNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": ""},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: not_empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": ""},
+			},
+			false,
+		},
+		{"OperatorNotStringEmpty",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": 123},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": 123},
+			},
+			false,
+		},
+		//Contains
+		{"OperatorStringContainsMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: contains
+    value: match
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			true,
+		},
+		{"OperatorStringContainsNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: contains
+    value: notmatch
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			false,
+		},
+		{"OperatorStringContainsEmptyNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: contains
+    value: ""
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			false,
+		},
+		//HasPrefix
+		{"OperatorStringHasPrefixMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: has_prefix
+    value: test
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			true,
+		},
+		{"OperatorStringHasPrefixNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: has_prefix
+    value: match
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			false,
+		},
+		{"OperatorStringHasPrefixEmptyNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: has_prefix
+    value: ""
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			false,
+		},
+		//HasSuffix
+		{"OperatorStringHasSuffixMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: has_suffix
+    value: case
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			true,
+		},
+		{"OperatorStringHasSuffixNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: has_suffix
+    value: match
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			false,
+		},
+		{"OperatorStringHasSuffixEmptyNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: has_suffix
+    value: ""
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": "testmatchcase"},
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

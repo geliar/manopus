@@ -37,10 +37,11 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	i.name = name
 	i.debug, _ = config["debug"].(bool)
 	i.token, _ = config["token"].(string)
-	channels, _ := config["channels"].([]interface{})
-	for _, ch := range channels {
-		if chs, ok := ch.(string); ok {
-			i.channels = append(i.channels, chs)
+	messageTypes, _ := config["message_types"].([]interface{})
+	i.messageTypes = map[string]struct{}{}
+	for _, mt := range messageTypes {
+		if mts, ok := mt.(string); ok {
+			i.messageTypes[mts] = struct{}{}
 		}
 	}
 	iconURL, _ := config["bot_icon_url"].(string)

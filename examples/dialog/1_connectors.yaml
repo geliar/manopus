@@ -4,9 +4,9 @@ connectors:
     config:
       debug: false
       token: *slack_token
-      channels: *slack_channels
       bot_icon_url:
       bot_icon_emoji: *slack_bot_icon
+      message_types:
   http:
     type: http
   cli:

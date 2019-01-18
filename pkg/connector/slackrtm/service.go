@@ -16,13 +16,13 @@ import (
 )
 
 type SlackRTM struct {
-	created  int64
-	id       int64
-	name     string
-	debug    bool
-	token    string
-	channels []string
-	online   struct {
+	created      int64
+	id           int64
+	name         string
+	debug        bool
+	token        string
+	messageTypes map[string]struct{}
+	online       struct {
 		Channels []slack.Channel
 		Users    []slack.User
 		User     slack.UserDetails
@@ -141,7 +141,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 		case *slack.MessageEvent:
 			l.Debug().Msgf("Message: %v\n", ev)
 			// Only text messages from real users
-			if ev.User != "" && ev.SubType == "" {
+			if _, ok := c.messageTypes[ev.SubType]; ev.User != "" && (ev.SubType == "" || ok) {
 				e := &payload.Event{
 					Input: c.name,
 					Type:  connectorName,
@@ -199,7 +199,7 @@ func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *payload.Event
 
 func (c *SlackRTM) updateChannels(ctx context.Context) {
 	l := logger(ctx)
-	l.Debug().Msg("Updating Slack channels")
+	l.Debug().Msg("Updating Slack messageTypes")
 	var resChannels []slack.Channel
 	var cursor string
 	for {
@@ -210,7 +210,7 @@ func (c *SlackRTM) updateChannels(ctx context.Context) {
 				ExcludeArchived: "true",
 				Types:           []string{"public_channel", "private_channel"}})
 		if err != nil {
-			l.Error().Err(err).Msg("Error when updating channels")
+			l.Error().Err(err).Msg("Error when updating messageTypes")
 			return
 		}
 		resChannels = append(resChannels, channels...)
@@ -222,7 +222,7 @@ func (c *SlackRTM) updateChannels(ctx context.Context) {
 	c.Lock()
 	c.online.Channels = resChannels
 	c.Unlock()
-	l.Debug().Msgf("Found %d channels", len(resChannels))
+	l.Debug().Msgf("Found %d messageTypes", len(resChannels))
 }
 
 func (c *SlackRTM) updateUsers(ctx context.Context) {

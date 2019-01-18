@@ -26,7 +26,6 @@ func TestSlack(t *testing.T) {
 		i.name = "test"
 		i.debug = false
 		i.token = os.Getenv("SLACK_TOKEN")
-		i.channels = []string{os.Getenv("SLACK_CHANNEL")}
 		i.stopped = make(chan struct{})
 
 		a.NoError(i.validate())
@@ -83,7 +82,7 @@ func TestSlackBuilder(t *testing.T) {
 	config := map[string]interface{}{
 		"debug": true,
 		"token": os.Getenv("SLACK_TOKEN"),
-		"channels": []interface{}{
+		"messageTypes": []interface{}{
 			os.Getenv("SLACK_CHANNEL"),
 		},
 		"bot_icon_url":   "url",

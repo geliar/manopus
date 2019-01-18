@@ -79,6 +79,7 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"http_host":         r.Host,
 			"http_remote_addr":  r.RemoteAddr,
 			"http_uri":          r.RequestURI,
+			"http_path":         r.URL.Path,
 			"http_form":         r.Form,
 			"http_content_type": r.Header.Get("Content-Type"),
 			"http_referer":      r.Referer(),

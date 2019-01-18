@@ -3,6 +3,7 @@ package matcher
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	"github.com/geliar/manopus/pkg/payload"
 )
@@ -107,6 +108,12 @@ func (m *MatchConfig) matchField(ctx context.Context, payload *payload.Payload) 
 			}
 			return true
 		}
+		switch m.Operator {
+		case "not_empty":
+			return v != ""
+		case "empty":
+			return v == ""
+		}
 	}
 	return false
 }
@@ -115,6 +122,35 @@ func (m *MatchConfig) compare(ctx context.Context, f, c interface{}, operator st
 	if operator == "" {
 		return reflect.DeepEqual(f, c)
 	}
+
+	// Strings operators
+	switch operator {
+	case "contains":
+		sf, _ := f.(string)
+		sc, _ := c.(string)
+		// if field or compare is empty we cannot compare
+		if sf == "" || sc == "" {
+			return false
+		}
+		return strings.Contains(sf, sc)
+	case "has_prefix":
+		sf, _ := f.(string)
+		sc, _ := c.(string)
+		// if field or compare is empty we cannot compare
+		if sf == "" || sc == "" {
+			return false
+		}
+		return strings.HasPrefix(sf, sc)
+	case "has_suffix":
+		sf, _ := f.(string)
+		sc, _ := c.(string)
+		// if field or compare is empty we cannot compare
+		if sf == "" || sc == "" {
+			return false
+		}
+		return strings.HasSuffix(sf, sc)
+	}
+
 	var a, b float64
 
 	// f should be always float64 because of gjson package
