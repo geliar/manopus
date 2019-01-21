@@ -515,6 +515,63 @@ match:
 			},
 			false,
 		},
+
+		{"OperatorArrayEmptyMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{}},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{}},
+			},
+			true,
+		},
+		{"OperatorArrayEmptyNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{"abc", "qwe"}},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{"abc", "qwe"}},
+			},
+			false,
+		},
+		{"OperatorArrayNotEmptyMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{"abc", "qwe"}},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: not_empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{"abc", "qwe"}},
+			},
+			true,
+		},
+		{"OperatorArrayNotEmptyNotMatched",
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{}},
+			},
+			`
+match:
+  - field: req.testreq
+    operator: not_empty
+`,
+			payload.Payload{
+				Req: map[string]interface{}{"testreq": []string{}},
+			},
+			false,
+		},
 		{"OperatorStringNotEmptyMatched",
 			payload.Payload{
 				Req: map[string]interface{}{"testreq": "qwe"},
@@ -543,7 +600,7 @@ match:
 			},
 			false,
 		},
-		{"OperatorNotStringEmpty",
+		{"OperatorIntEmpty",
 			payload.Payload{
 				Req: map[string]interface{}{"testreq": 123},
 			},

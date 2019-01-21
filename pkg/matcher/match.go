@@ -114,6 +114,13 @@ func (m *MatchConfig) matchField(ctx context.Context, payload *payload.Payload) 
 		case "empty":
 			return v == ""
 		}
+	case []interface{}:
+		switch m.Operator {
+		case "not_empty":
+			return len(v) > 0
+		case "empty":
+			return len(v) == 0
+		}
 	}
 	return false
 }

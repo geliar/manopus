@@ -59,7 +59,7 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 		Str("input_name", response.Request.Input).
 		Str("input_event_id", response.Request.ID).
 		Msg("Received Send event")
-	var chid, text string
+	var text string
 
 	switch v := response.Data["data"].(type) {
 	case string:
@@ -76,9 +76,9 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 		return
 	}
 
-	chid = c.getChannelID(ctx, response)
+	chids := c.getChannelIDs(ctx, response)
 
-	if chid == "" {
+	if chids == nil {
 		l.Warn().Msg("Cannot determine channel_id")
 		return
 	}
@@ -99,7 +99,7 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 				Msg("Error unmarshaling attachments")
 		}
 	}
-	c.sendToChannel(ctx, chid, attachments, text)
+	c.sendToChannel(ctx, chids, attachments, text)
 }
 
 func (c *SlackRTM) Stop(ctx context.Context) {
@@ -365,59 +365,122 @@ func (c *SlackRTM) openIM(ctx context.Context, userID string) (imID string) {
 	return imID
 }
 
-func (c *SlackRTM) sendToChannel(ctx context.Context, channel string, attachments []slack.Attachment, message string) {
+func (c *SlackRTM) sendToChannel(ctx context.Context, channels []string, attachments []slack.Attachment, message string) {
 	l := logger(ctx)
 	l.Debug().
-		Str("slack_channel", channel).
-		Msg("Sending message to Slack channel")
+		Strs("slack_channel", channels).
+		Msg("Sending message to Slack channels")
 	params := slack.PostMessageParameters{
 		IconURL:   c.botIcon.IconURL,
 		IconEmoji: c.botIcon.IconEmoji,
 		LinkNames: 1,
 		AsUser:    false,
 	}
-	_, _, _, err := c.rtm.SendMessageContext(ctx,
-		channel,
-		slack.MsgOptionText(message, false),
-		slack.MsgOptionParse(true),
-		slack.MsgOptionPost(),
-		slack.MsgOptionPostMessageParameters(params),
-		slack.MsgOptionAttachments(attachments...),
-	)
-	if err != nil {
-		l.Error().Err(err).Msg("Error sending Slack message")
+	for _, channel := range channels {
+		_, _, _, err := c.rtm.SendMessageContext(ctx,
+			channel,
+			slack.MsgOptionText(message, false),
+			slack.MsgOptionParse(true),
+			slack.MsgOptionPost(),
+			slack.MsgOptionPostMessageParameters(params),
+			slack.MsgOptionAttachments(attachments...),
+		)
+		if err != nil {
+			l.Error().Err(err).Msg("Error sending Slack message")
+		}
 	}
 }
 
-func (c *SlackRTM) getChannelID(ctx context.Context, response *payload.Response) string {
-	if chID, ok := response.Data["channel_id"].(string); ok && chID != "" {
-		return chID
-	}
-	if chname, ok := response.Data["channel_name"].(string); ok && chname != "" {
-		if ch := c.getChannelByName(ctx, chname); ch.ID != "" {
-			return ch.ID
-		}
-	}
-	if userID, ok := response.Data["user_id"].(string); ok && userID != "" {
-		if ch := c.openIM(ctx, userID); ch != "" {
-			return ch
-		}
-	}
-	if username, ok := response.Data["user_name"].(string); ok && username != "" {
-		if user := c.getUserByName(ctx, username); user.ID != "" {
-			if ch := c.openIM(ctx, user.ID); ch != "" {
-				return ch
+func (c *SlackRTM) getChannelIDs(ctx context.Context, response *payload.Response) []string {
+	switch v := response.Data["channel_id"].(type) {
+	case string:
+		return []string{v}
+	case []interface{}:
+		var res []string
+		for i := range v {
+			if s, ok := v[i].(string); ok {
+				res = append(res, s)
 			}
 		}
+		return res
 	}
-	if username, ok := response.Data["user_display_name"].(string); ok && username != "" {
-		if user := c.getUserByDisplayName(ctx, username); user.ID != "" {
-			if ch := c.openIM(ctx, user.ID); ch != "" {
-				return ch
+	switch v := response.Data["channel_name"].(type) {
+	case string:
+		if ch := c.getChannelByName(ctx, v); ch.ID != "" {
+			return []string{ch.ID}
+		}
+	case []interface{}:
+		var res []string
+		for i := range v {
+			if s, ok := v[i].(string); ok {
+				if ch := c.getChannelByName(ctx, s); ch.ID != "" {
+					res = append(res, ch.ID)
+				}
 			}
 		}
+		return res
 	}
-	return ""
+
+	switch v := response.Data["user_id"].(type) {
+	case string:
+		if ch := c.openIM(ctx, v); ch != "" {
+			return []string{ch}
+		}
+	case []interface{}:
+		var res []string
+		for i := range v {
+			if s, ok := v[i].(string); ok {
+				if ch := c.openIM(ctx, s); ch != "" {
+					res = append(res, ch)
+				}
+			}
+		}
+		return res
+	}
+
+	switch v := response.Data["user_name"].(type) {
+	case string:
+		if user := c.getUserByName(ctx, v); user.ID != "" {
+			if ch := c.openIM(ctx, user.ID); ch != "" {
+				return []string{ch}
+			}
+		}
+	case []interface{}:
+		var res []string
+		for i := range v {
+			if s, ok := v[i].(string); ok {
+				if user := c.getUserByName(ctx, s); user.ID != "" {
+					if ch := c.openIM(ctx, user.ID); ch != "" {
+						res = append(res, ch)
+					}
+				}
+			}
+		}
+		return res
+	}
+
+	switch v := response.Data["user_display_name"].(type) {
+	case string:
+		if user := c.getUserByDisplayName(ctx, v); user.ID != "" {
+			if ch := c.openIM(ctx, user.ID); ch != "" {
+				return []string{ch}
+			}
+		}
+	case []interface{}:
+		var res []string
+		for i := range v {
+			if s, ok := v[i].(string); ok {
+				if user := c.getUserByDisplayName(ctx, s); user.ID != "" {
+					if ch := c.openIM(ctx, user.ID); ch != "" {
+						res = append(res, ch)
+					}
+				}
+			}
+		}
+		return res
+	}
+
+	return nil
 }
 
 func (c *SlackRTM) getID() string {

@@ -146,8 +146,8 @@ sequencer:
         - inputs:
             - http
           match:
-            - field: req.http_uri
-              regexp: ^/message
+            - field: req.http_path
+              regexp: ^/message$
             - field: req.http_form.message.0
               regexp: (?P<msg>.*)
             - field: req.http_form.user.0
