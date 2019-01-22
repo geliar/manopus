@@ -91,7 +91,6 @@ sequencer:
                 - field: req.direct
                   value: true
                 - field: req.mentioned
-                - field: req.mentioned
                   value: true
             - field: req.message
               regexp: '(@.* )?Debug$'
@@ -99,6 +98,23 @@ sequencer:
             - type: bash
               encoding: plain
               script: ( set -o posix ; set ) | grep 'REQ_\|ENV_\|MATCH_'
+    - name: Python request debug sequence
+      steps:
+        - name: debug
+          match:
+            - or:
+                - field: req.direct
+                  value: true
+                - field: req.mentioned
+                  value: true
+            - field: req.message
+              regexp: '(@.* )?DebugPython$'
+          processors:
+            - type: python
+              encoding: plain
+              script: |
+                from pprint import pprint
+                pprint(payload)
     - name: simple processor sequence
       steps:
         - name: simple

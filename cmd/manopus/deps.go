@@ -7,5 +7,6 @@ import (
 
 	//Processors
 	_ "github.com/geliar/manopus/pkg/processor/bash"
+	_ "github.com/geliar/manopus/pkg/processor/python"
 	_ "github.com/geliar/manopus/pkg/processor/simple"
 )
