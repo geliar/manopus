@@ -195,7 +195,7 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	l.Debug().Str("content-type", r.Header.Get("Content-Type")).Str("body", buf.String()).Msg("Slack event")
 	body := buf.String()
-	eventsAPIEvent, err := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{c.config.verificationToken}))
+	eventsAPIEvent, err := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: c.config.verificationToken}))
 	if err != nil {
 		l.Error().Err(err).Msg("Cannot get event")
 		w.WriteHeader(http.StatusInternalServerError)
