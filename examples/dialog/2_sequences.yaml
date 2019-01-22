@@ -112,9 +112,11 @@ sequencer:
               regexp: 'Simple$'
           processors:
             - type: simple
+              destination: slack
               encoding: none
+              skip_callback: true
               script:
-                user_name: dl
+                user_name: *slack_user
                 attachments:
                   - callback_id: "several options"
                     attachment_type: "default"

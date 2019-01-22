@@ -132,6 +132,7 @@ func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Req
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		l.Error().Err(err).Msg("Cannot read HTTP body")
+		return
 	}
 	body := buf.String()
 	if r.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
@@ -141,6 +142,7 @@ func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Req
 	val, err := url.ParseQuery(body)
 	if err != nil {
 		l.Error().Err(err).Msg("Cannot parse application/x-www-form-urlencoded event")
+		return
 	}
 	body = val.Get("payload")
 	l.Debug().Str("content-type", r.Header.Get("Content-Type")).Str("body", body).Msg("Interactive event")
@@ -148,6 +150,11 @@ func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Req
 	err = json.Unmarshal([]byte(body), &ev)
 	if err != nil {
 		l.Error().Err(err).Msg("Cannot parse Slack event payload")
+		return
+	}
+	if ev.Token != c.config.verificationToken {
+		l.Error().Msg("Wrong verification token")
+		return
 	}
 	e := &payload.Event{
 		Input: c.name,
@@ -192,16 +199,18 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		l.Error().Err(err).Msg("Cannot read HTTP body")
+		return
 	}
 	l.Debug().Str("content-type", r.Header.Get("Content-Type")).Str("body", buf.String()).Msg("Slack event")
 	body := buf.String()
 	eventsAPIEvent, err := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: c.config.verificationToken}))
 	if err != nil {
-		l.Error().Err(err).Msg("Cannot get event")
+		l.Error().Err(err).Msg("Cannot parse event")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if eventsAPIEvent.Type == slackevents.URLVerification {
+	switch eventsAPIEvent.Type {
+	case slackevents.URLVerification:
 		var r *slackevents.ChallengeResponse
 		err := json.Unmarshal([]byte(body), &r)
 		if err != nil {
@@ -209,8 +218,8 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"challenge":"` + r.Challenge + `"}`))
-	}
-	if eventsAPIEvent.Type == slackevents.CallbackEvent {
+		return
+	case slackevents.CallbackEvent:
 		eventData := eventsAPIEvent.Data.(*slackevents.EventsAPICallbackEvent)
 		innerEvent := eventsAPIEvent.InnerEvent
 		e := new(payload.Event)
