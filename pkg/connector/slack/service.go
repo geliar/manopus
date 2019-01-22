@@ -1,33 +1,42 @@
-package slackrtm
+package slack
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
 
-	"github.com/geliar/manopus/pkg/payload"
+	"github.com/nlopes/slack"
+	"github.com/nlopes/slack/slackevents"
+	"github.com/rs/zerolog/hlog"
 
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/log"
-	"github.com/nlopes/slack"
+	"github.com/geliar/manopus/pkg/payload"
 )
 
 type SlackRTM struct {
-	created      int64
-	id           int64
-	name         string
-	debug        bool
-	token        string
-	messageTypes map[string]struct{}
-	online       struct {
+	created int64
+	id      int64
+	name    string
+	config  struct {
+		debug             bool
+		token             string
+		verificationToken string
+		messageTypes      map[string]struct{}
+		botIcon           slack.Icon
+		rtm               bool
+	}
+	online struct {
 		Channels []slack.Channel
 		Users    []slack.User
 		User     slack.UserDetails
 	}
-	botIcon  slack.Icon
 	rtm      *slack.RTM
 	handlers []input.Handler
 	stop     bool
@@ -110,15 +119,169 @@ func (c *SlackRTM) Stop(ctx context.Context) {
 	}
 	c.stop = true
 	c.Unlock()
-	if c.rtm != nil {
+	if c.config.rtm && c.rtm != nil {
 		_ = c.rtm.Disconnect()
+		<-c.stopped
 	}
-	<-c.stopped
 }
 
-func (c *SlackRTM) serve(ctx context.Context) {
+func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	l := hlog.FromRequest(r)
+	ctx := l.WithContext(context.Background())
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		l.Error().Err(err).Msg("Cannot read HTTP body")
+	}
+	body := buf.String()
+	if r.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
+		l.Error().Msg("Unrecognized type of payload")
+		return
+	}
+	val, err := url.ParseQuery(body)
+	if err != nil {
+		l.Error().Err(err).Msg("Cannot parse application/x-www-form-urlencoded event")
+	}
+	body = val.Get("payload")
+	l.Debug().Str("content-type", r.Header.Get("Content-Type")).Str("body", body).Msg("Interactive event")
+	var ev slack.InteractionCallback
+	err = json.Unmarshal([]byte(body), &ev)
+	if err != nil {
+		l.Error().Err(err).Msg("Cannot parse Slack event payload")
+	}
+	e := &payload.Event{
+		Input: c.name,
+		Type:  connectorName,
+		ID:    c.getID(),
+		Data: map[string]interface{}{
+			"interaction":       true,
+			"user_id":           ev.User.ID,
+			"user_name":         c.getUserByID(ctx, ev.User.ID).Name,
+			"user_display_name": c.getUserByID(ctx, ev.User.ID).Name,
+			"user_real_name":    c.getUserByID(ctx, ev.User.ID).RealName,
+			"channel_id":        ev.Channel.ID,
+			"channel_name":      c.getChannelByID(ctx, ev.Channel.ID).Name,
+			"thread_ts":         ev.Message.ThreadTimestamp,
+			"ts":                ev.Message.Timestamp,
+			"message":           ev.Message.Text,
+			"direct":            strings.HasPrefix(ev.Channel.ID, "D"),
+			"callback_id":       ev.CallbackID,
+		},
+	}
+	var actions []map[string]interface{}
+	for i := range ev.Actions {
+		actions = append(actions, map[string]interface{}{
+			"name":  ev.Actions[i].Name,
+			"value": ev.Actions[i].Value,
+			"text":  ev.Actions[i].Text,
+		})
+	}
+	if len(ev.Actions) == 1 {
+		e.Data["action_name"] = ev.Actions[0].Name
+		e.Data["action_value"] = ev.Actions[0].Value
+		e.Data["action_text"] = ev.Actions[0].Text
+	}
+	e.Data["actions"] = actions
+	c.sendEventToHandlers(ctx, e)
+}
+
+func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	l := hlog.FromRequest(r)
+	ctx := l.WithContext(context.Background())
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		l.Error().Err(err).Msg("Cannot read HTTP body")
+	}
+	l.Debug().Str("content-type", r.Header.Get("Content-Type")).Str("body", buf.String()).Msg("Slack event")
+	body := buf.String()
+	eventsAPIEvent, err := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{c.config.verificationToken}))
+	if err != nil {
+		l.Error().Err(err).Msg("Cannot get event")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if eventsAPIEvent.Type == slackevents.URLVerification {
+		var r *slackevents.ChallengeResponse
+		err := json.Unmarshal([]byte(body), &r)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"challenge":"` + r.Challenge + `"}`))
+	}
+	if eventsAPIEvent.Type == slackevents.CallbackEvent {
+		eventData := eventsAPIEvent.Data.(*slackevents.EventsAPICallbackEvent)
+		innerEvent := eventsAPIEvent.InnerEvent
+		e := new(payload.Event)
+		switch ev := innerEvent.Data.(type) {
+		case *slackevents.AppMentionEvent:
+			if ev.User == "" {
+				l.Debug().Msg("Message from bot itself, skipping")
+				return
+			}
+			e = &payload.Event{
+				Input: c.name,
+				Type:  connectorName,
+				ID:    c.getID(),
+				Data: map[string]interface{}{
+					"user_id":           ev.User,
+					"user_name":         c.getUserByID(ctx, ev.User).Name,
+					"user_display_name": c.getUserByID(ctx, ev.User).Name,
+					"user_real_name":    c.getUserByID(ctx, ev.User).RealName,
+					"channel_id":        ev.Channel,
+					"channel_name":      c.getChannelByID(ctx, ev.Channel).Name,
+					"thread_ts":         ev.ThreadTimeStamp,
+					"ts":                ev.TimeStamp,
+					"message":           ev.Text,
+					"mentioned":         true,
+					"direct":            strings.HasPrefix(ev.Channel, "D"),
+				},
+			}
+			for _, u := range eventData.AuthedUsers {
+				if strings.Contains(ev.Text, fmt.Sprintf("<@%s>", u)) {
+					e.Data["mentioned"] = true
+				}
+			}
+		case *slackevents.MessageEvent:
+			for _, u := range eventData.AuthedUsers {
+				if ev.User == "" || ev.User == u {
+					l.Debug().Msg("Message from bot itself, skipping")
+					return
+				}
+			}
+			e = &payload.Event{
+				Input: c.name,
+				Type:  connectorName,
+				ID:    c.getID(),
+				Data: map[string]interface{}{
+					"user_id":           ev.User,
+					"user_name":         c.getUserByID(ctx, ev.User).Name,
+					"user_display_name": c.getUserByID(ctx, ev.User).Name,
+					"user_real_name":    c.getUserByID(ctx, ev.User).RealName,
+					"channel_id":        ev.Channel,
+					"channel_name":      c.getChannelByID(ctx, ev.Channel).Name,
+					"thread_ts":         ev.ThreadTimeStamp,
+					"ts":                ev.TimeStamp,
+					"message":           ev.Text,
+					"mentioned":         false,
+					"direct":            strings.HasPrefix(ev.Channel, "D"),
+				},
+			}
+			for _, u := range eventData.AuthedUsers {
+				if strings.Contains(ev.Text, fmt.Sprintf("<@%s>", u)) {
+					e.Data["mentioned"] = true
+				}
+			}
+		}
+		c.sendEventToHandlers(ctx, e)
+	}
+}
+
+func (c *SlackRTM) rtmServe(ctx context.Context) {
 	l := logger(ctx)
 	go c.rtm.ManageConnection()
+	l.Debug().Msg("Slack RTM connection has been started")
 	for msg := range c.rtm.IncomingEvents {
 		if c.stop {
 			l.Info().Msg("Shutdown request received")
@@ -141,7 +304,7 @@ func (c *SlackRTM) serve(ctx context.Context) {
 		case *slack.MessageEvent:
 			l.Debug().Msgf("Message: %v\n", ev)
 			// Only text messages from real users
-			if _, ok := c.messageTypes[ev.SubType]; ev.User != "" && (ev.SubType == "" || ok) {
+			if _, ok := c.config.messageTypes[ev.SubType]; ev.User != "" && (ev.SubType == "" || ok) {
 				e := &payload.Event{
 					Input: c.name,
 					Type:  connectorName,
@@ -371,8 +534,8 @@ func (c *SlackRTM) sendToChannel(ctx context.Context, channels []string, attachm
 		Strs("slack_channel", channels).
 		Msg("Sending message to Slack channels")
 	params := slack.PostMessageParameters{
-		IconURL:   c.botIcon.IconURL,
-		IconEmoji: c.botIcon.IconEmoji,
+		IconURL:   c.config.botIcon.IconURL,
+		IconEmoji: c.config.botIcon.IconEmoji,
 		LinkNames: 1,
 		AsUser:    false,
 	}

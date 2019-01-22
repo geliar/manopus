@@ -113,22 +113,31 @@ sequencer:
           processors:
             - type: simple
               encoding: none
-              destination: slack
               script:
                 user_name: dl
                 attachments:
                   - callback_id: "several options"
                     attachment_type: "default"
                     actions:
-                      - name: optionA
+                      - name: Option A
                         text: "Option A"
                         type: button
-                        value": opt_a
-                      - name: optionB
+                        value: opt_a
+                      - name: Option B
                         text: "Option B"
                         type: button
-                        value": opt_b
-              data: "Simple processor response"
+                        value: opt_b
+                data: "Simple processor response"
+        - name: simple callback
+          match:
+            - field: req.interaction
+              value: true
+            - field: req.actions
+              operator: not_empty
+          processors:
+            - type: bash
+              encoding: plain
+              script: echo You have chosen $REQ_ACTION_NAME
     - name: HTTP request debug sequence
       steps:
         - name: http debug

@@ -1,8 +1,11 @@
-package slackrtm
+package slack
 
 import (
 	"context"
+	"net/http"
 	"time"
+
+	mhttp "github.com/geliar/manopus/pkg/http"
 
 	"github.com/geliar/manopus/pkg/connector"
 	"github.com/geliar/manopus/pkg/input"
@@ -35,28 +38,37 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	i := new(SlackRTM)
 	i.created = time.Now().UnixNano()
 	i.name = name
-	i.debug, _ = config["debug"].(bool)
-	i.token, _ = config["token"].(string)
+	i.config.debug, _ = config["debug"].(bool)
+	i.config.rtm, _ = config["rtm"].(bool)
+	i.config.token, _ = config["token"].(string)
+	i.config.verificationToken, _ = config["verification_token"].(string)
 	messageTypes, _ := config["message_types"].([]interface{})
-	i.messageTypes = map[string]struct{}{}
+	i.config.messageTypes = map[string]struct{}{}
 	for _, mt := range messageTypes {
 		if mts, ok := mt.(string); ok {
-			i.messageTypes[mts] = struct{}{}
+			i.config.messageTypes[mts] = struct{}{}
 		}
 	}
 	iconURL, _ := config["bot_icon_url"].(string)
 	iconEmoji, _ := config["bot_icon_emoji"].(string)
-	i.botIcon.IconURL = iconURL
-	i.botIcon.IconEmoji = iconEmoji
+	i.config.botIcon.IconURL = iconURL
+	i.config.botIcon.IconEmoji = iconEmoji
 	if i.validate() != nil {
 		l.Fatal().Msg("Cannot validate parameters of connector")
 	}
 	i.stopped = make(chan struct{})
-	client := slack.New(i.token)
-	slack.SetLogger(&slackLogger{log: l})
-	client.SetDebug(i.debug)
+	client := slack.New(i.config.token, slack.OptionDebug(i.config.debug), slack.OptionLog(&slackLogger{log: l}))
 	i.rtm = client.NewRTM()
-	go i.serve(ctx)
+	if i.config.rtm {
+		go i.rtmServe(ctx)
+	}
 	input.Register(ctx, name, i)
 	output.Register(ctx, name, i)
+
+	if eventCallback, _ := config["event_callback"].(string); eventCallback != "" {
+		mhttp.AddHandler(ctx, eventCallback, http.HandlerFunc(i.EventCallbackHandler))
+	}
+	if interactionCallback, _ := config["interaction_callback"].(string); interactionCallback != "" {
+		mhttp.AddHandler(ctx, interactionCallback, http.HandlerFunc(i.InteractionCallbackHandler))
+	}
 }

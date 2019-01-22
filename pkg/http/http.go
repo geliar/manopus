@@ -78,6 +78,9 @@ func (s *HTTPServer) AddHandler(ctx context.Context, path string, h http.Handler
 	l := logger(ctx).With().Str("http_path", path).Logger()
 	s.Lock()
 	defer s.Unlock()
+	if s.routes == nil {
+		s.routes = map[string]http.Handler{}
+	}
 	if _, ok := s.routes[path]; ok {
 		l.Error().Msg("Trying to add HTTP handler for existing route")
 		return

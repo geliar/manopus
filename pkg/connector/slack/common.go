@@ -1,4 +1,4 @@
-package slackrtm
+package slack
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	serviceName   = "slackrtm"
+	serviceName   = "slack"
 	serviceType   = "connector"
-	connectorName = "slackrtm"
+	connectorName = "slack"
 )
 
 func logger(ctx context.Context) zerolog.Logger {

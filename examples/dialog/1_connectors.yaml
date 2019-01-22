@@ -1,12 +1,16 @@
 connectors:
   slack:
-    type: slackrtm
+    type: slack
     config:
       debug: false
+      rtm: false
       token: *slack_token
+      verification_token: *slack_verification_token
       bot_icon_url:
       bot_icon_emoji: *slack_bot_icon
       message_types:
+      event_callback: /slack/event
+      interaction_callback: /slack/interaction
   http:
     type: http
   cli:

@@ -1,6 +1,6 @@
 // +build integration
 
-package slackrtm
+package slack
 
 import (
 	"context"
@@ -24,18 +24,17 @@ func TestSlack(t *testing.T) {
 		i.created = time.Now().UnixNano()
 
 		i.name = "test"
-		i.debug = false
-		i.token = os.Getenv("SLACK_TOKEN")
+		i.config.debug = false
+		i.config.token = os.Getenv("SLACK_TOKEN")
+		i.config.rtm = true
 		i.stopped = make(chan struct{})
 
 		a.NoError(i.validate())
 
-		client := slack.New(i.token)
-		slack.SetLogger(&slackLogger{log: l})
-		client.SetDebug(i.debug)
+		client := slack.New(i.config.token, slack.OptionDebug(i.config.debug), slack.OptionLog(&slackLogger{log: l}))
 		t.Log("Starting RTM")
 		i.rtm = client.NewRTM()
-		go i.serve(ctx)
+		go i.rtmServe(ctx)
 		for n := 0; n < 20; n++ {
 			runtime.Gosched()
 			if i.online.User.ID != "" && len(i.online.Channels) != 0 {
@@ -48,7 +47,7 @@ func TestSlack(t *testing.T) {
 	})
 	t.Run("CheckFields", func(t *testing.T) {
 		a.Equal("test", i.Name())
-		a.Equal("slackrtm", i.Type())
+		a.Equal("slack", i.Type())
 	})
 	t.Run("getUser", func(t *testing.T) {
 		i.online.Users = i.online.Users[:0]
