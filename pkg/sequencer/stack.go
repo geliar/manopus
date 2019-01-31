@@ -40,12 +40,12 @@ func (s *sequenceStack) Exists(sequence *Sequence) bool {
 }
 
 // Match matching event with sequences in stack, pops and returns first matched sequence
-func (s *sequenceStack) Match(ctx context.Context, defaultInputs []string, event *payload.Event) (sequences []*Sequence) {
+func (s *sequenceStack) Match(ctx context.Context, inputs []string, processorName string, event *payload.Event) (sequences []*Sequence) {
 	s.Lock()
 	defer s.Unlock()
 	elem := s.first
 	for elem != nil {
-		if elem.sequence.Match(ctx, defaultInputs, event) {
+		if elem.sequence.Match(ctx, inputs, processorName, event) {
 			s.pop(elem)
 			sequences = append(sequences, elem.sequence)
 		}

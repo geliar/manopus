@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/geliar/manopus/pkg/processor"
+
 	"github.com/geliar/manopus/pkg/payload"
 )
 
@@ -14,33 +16,79 @@ type Sequence struct {
 	latestMatch    time.Time
 }
 
-func (s *Sequence) Match(ctx context.Context, defaultInputs []string, event *payload.Event) bool {
+func (s *Sequence) Match(ctx context.Context, inputs []string, processorName string, event *payload.Event) (matched bool) {
 	l := logger(ctx)
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).
 		Int("sequence_step", s.step).Logger()
-	newpayload := *(s.payload)
-	newpayload.Req = event.Data
 	ctx = l.WithContext(ctx)
-	if len(s.sequenceConfig.Steps[s.step].Inputs) > 0 {
-		if !contains(s.sequenceConfig.Steps[s.step].Inputs, event.Input) {
+	step := &s.sequenceConfig.Steps[s.step]
+	if len(step.Inputs) > 0 {
+		if !contains(step.Inputs, event.Input) {
 			return false
 		}
 	} else {
-		if !contains(defaultInputs, event.Input) {
+		if !contains(inputs, event.Input) {
 			return false
 		}
 	}
 
-	for i := range s.sequenceConfig.Steps[s.step].Match {
-		if !s.sequenceConfig.Steps[s.step].Match[i].Match(ctx, &newpayload) {
-			return false
+	if step.Match != nil {
+		if s.sequenceConfig.Processor != "" {
+			processorName = s.sequenceConfig.Processor
 		}
-	}
+		if step.Processor != "" {
+			processorName = step.Processor
+		}
 
-	*(s.payload) = newpayload
-	s.latestMatch = time.Now()
-	return true
+		newPayload := *(s.payload)
+		newPayload.Vars = step.Vars
+		newPayload.Req = event.Data
+
+		matched, _ = processor.Match(ctx, processorName, step.Match, &newPayload)
+		if matched {
+			*(s.payload) = newPayload
+			s.latestMatch = time.Now()
+		}
+		return matched
+	}
+	l.Warn().Msg("match field is empty for the step, it will be never executed")
+	return false
+}
+
+func (s *Sequence) Run(ctx context.Context, processorName string) (next processor.NextStatus, callback interface{}, responses []payload.Response) {
+	l := logger(ctx)
+	l = l.With().
+		Str("sequence_name", s.sequenceConfig.Name).
+		Int("sequence_step", s.step).Logger()
+	ctx = l.WithContext(ctx)
+	step := &s.sequenceConfig.Steps[s.step]
+
+	if step.Script != nil {
+		runCtx := ctx
+		var cancel context.CancelFunc
+		if step.MaxExecutionTime != 0 {
+			runCtx, cancel = context.WithTimeout(runCtx, time.Duration(step.MaxExecutionTime)*time.Second)
+			defer cancel()
+		}
+		if s.sequenceConfig.Processor != "" {
+			processorName = s.sequenceConfig.Processor
+		}
+		if step.Processor != "" {
+			processorName = step.Processor
+		}
+
+		newPayload := *(s.payload)
+		if newPayload.Export == nil {
+			newPayload.Export = make(map[string]interface{})
+		}
+		next, callback, responses, _ = processor.Run(runCtx, processorName, step.Script, &newPayload)
+		*(s.payload) = newPayload
+		s.latestMatch = time.Now()
+		return
+	}
+	l.Warn().Msg("script field is empty for the step, there is nothing to execute")
+	return
 }
 
 func (s *Sequence) TimedOut(ctx context.Context) bool {

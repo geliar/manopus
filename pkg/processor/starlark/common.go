@@ -1,4 +1,4 @@
-package bash
+package starlark
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	serviceName = "bash"
+	serviceName = "starlark"
 	serviceType = "processor"
 )
 

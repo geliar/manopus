@@ -56,10 +56,11 @@ func TestPayload_ToJson(t *testing.T) {
 			Env:    map[string]interface{}{"testenv": "testenv is OK"},
 			Export: map[string]interface{}{"testexport": "testexport is OK"},
 			Match:  map[string]interface{}{"testmatch": "testmatch is OK"},
+			Vars:   map[string]interface{}{"testvars": "testvars is OK"},
 		},
-			[]byte("{\"env\":{\"testenv\":\"testenv is OK\"},\"req\":{\"testreq\":\"testreq is OK\"},\"resp\":{\"testresp\":\"testresp is OK\"},\"export\":{\"testexport\":\"testexport is OK\"},\"match\":{\"testmatch\":\"testmatch is OK\"}}"),
+			[]byte("{\"env\":{\"testenv\":\"testenv is OK\"},\"vars\":{\"testvars\":\"testvars is OK\"},\"req\":{\"testreq\":\"testreq is OK\"},\"resp\":{\"testresp\":\"testresp is OK\"},\"export\":{\"testexport\":\"testexport is OK\"},\"match\":{\"testmatch\":\"testmatch is OK\"}}"),
 		},
-		{"emptyPayload", Payload{}, []byte("{\"env\":null,\"req\":null,\"resp\":null,\"export\":null,\"match\":null}")},
+		{"emptyPayload", Payload{}, []byte("{\"env\":null,\"vars\":null,\"req\":null,\"resp\":null,\"export\":null,\"match\":null}")},
 		{"badPayload", Payload{Req: map[string]interface{}{"bad": make(chan int)}}, nil},
 	}
 	for _, tt := range tests {

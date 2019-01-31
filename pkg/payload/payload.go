@@ -11,6 +11,7 @@ import (
 
 type Payload struct {
 	Env    map[string]interface{} `yaml:"env" json:"env"`
+	Vars   map[string]interface{} `yaml:"vars" json:"vars"`
 	Req    map[string]interface{} `yaml:"req" json:"req"`
 	Resp   map[string]interface{} `yaml:"resp" json:"resp"`
 	Export map[string]interface{} `yaml:"export" json:"export"`

@@ -158,7 +158,13 @@ func (c *HTTP) sendEventToHandlers(ctx context.Context, event *payload.Event) (r
 	for _, h := range c.handlers {
 		resp := h(ctx, event)
 		if resp != nil {
-			response = resp
+			response = new(payload.Response)
+			response.Data = map[string]interface{}{
+				"data": resp,
+			}
+			response.ID = event.ID
+			response.Request = event
+			response.Output = serviceName
 		}
 	}
 	return

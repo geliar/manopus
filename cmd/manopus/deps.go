@@ -6,7 +6,5 @@ import (
 	_ "github.com/geliar/manopus/pkg/connector/slack"
 
 	//Processors
-	_ "github.com/geliar/manopus/pkg/processor/bash"
-	_ "github.com/geliar/manopus/pkg/processor/python"
-	_ "github.com/geliar/manopus/pkg/processor/simple"
+	_ "github.com/geliar/manopus/pkg/processor/starlark"
 )

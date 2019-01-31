@@ -69,14 +69,13 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 		Str("input_event_id", response.Request.ID).
 		Msg("Received Send event")
 	var text string
-
 	switch v := response.Data["data"].(type) {
 	case string:
 		text = v
 	case []byte:
 		text = string(v)
 	default:
-		l.Error().Msg("Unknown type of 'data' field of response")
+		l.Error().Msgf("Unknown type of 'data' field of response %T", response.Data["data"])
 		return
 	}
 	if text == "" {
@@ -105,7 +104,7 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 		if err != nil {
 			l.Error().
 				Err(err).
-				Msg("Error unmarshaling attachments")
+				Msg("Error unmarshalling attachments")
 		}
 	}
 	c.sendToChannel(ctx, chids, attachments, text)
@@ -360,9 +359,19 @@ func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *payload.Event
 	defer c.RUnlock()
 	for _, h := range c.handlers {
 		go func(handler input.Handler) {
-			response := handler(ctx, event)
-			if response != nil {
+			res := handler(ctx, event)
+			if res != nil {
+				response := new(payload.Response)
+				response.Request = event
+				response.Data = make(map[string]interface{})
 				response.Data["channel_id"], _ = response.Request.Data["channel_id"].(string)
+				response.Data = map[string]interface{}{
+					"data":       res,
+					"channel_id": event.Data["channel_id"].(string),
+				}
+				response.ID = event.ID
+				response.Request = event
+				response.Output = serviceName
 				c.Send(ctx, response)
 			}
 		}(h)

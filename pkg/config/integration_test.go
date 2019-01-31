@@ -4,7 +4,6 @@ package config
 
 import (
 	"context"
-	"io/ioutil"
 	"testing"
 
 	"github.com/geliar/manopus/pkg/input"
@@ -16,9 +15,10 @@ import (
 
 func TestInitConfig(t *testing.T) {
 	a := assert.New(t)
-	l := log.Output(ioutil.Discard)
+	l := log.Logger
 	ctx := l.WithContext(context.Background())
-	c, s, h := InitConfig(ctx, []string{"../../examples/dialog"})
+
+	c, s, h := InitConfig(ctx, []string{"../../examples/test"})
 	a.NotNil(c)
 	a.NotNil(s)
 	a.NotNil(h)

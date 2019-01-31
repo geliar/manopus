@@ -13,4 +13,4 @@ type Driver interface {
 	Stop(ctx context.Context)
 }
 
-type Handler func(ctx context.Context, event *payload.Event) (response *payload.Response)
+type Handler func(ctx context.Context, event *payload.Event) (callback interface{})

@@ -18,8 +18,12 @@ func Register(ctx context.Context, processor Processor) {
 	catalog.register(ctx, processor)
 }
 
-func Run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, next NextStatus, err error) {
-	return catalog.run(ctx, config, payload)
+func Run(ctx context.Context, name string, script interface{}, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error) {
+	return catalog.run(ctx, name, script, payload)
+}
+
+func Match(ctx context.Context, name string, match interface{}, payload *payload.Payload) (matched bool, err error) {
+	return catalog.match(ctx, name, match, payload)
 }
 
 func (c *catalogStore) register(ctx context.Context, processor Processor) {
@@ -32,7 +36,7 @@ func (c *catalogStore) register(ctx context.Context, processor Processor) {
 		c.processors = make(map[string]Processor)
 	}
 	l = l.With().
-		Str("processor_type", processor.Type()).
+		Str("processor_name", processor.Type()).
 		Logger()
 	if _, ok := c.processors[processor.Type()]; ok {
 		l.Fatal().
@@ -43,18 +47,34 @@ func (c *catalogStore) register(ctx context.Context, processor Processor) {
 		Msg("Registered new processor")
 }
 
-func (c *catalogStore) run(ctx context.Context, config *ProcessorConfig, payload *payload.Payload) (result interface{}, next NextStatus, err error) {
+func (c *catalogStore) run(ctx context.Context, name string, script interface{}, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error) {
 	c.RLock()
 
 	l := logger(ctx)
-	if _, ok := c.processors[config.Type]; !ok {
+	if _, ok := c.processors[name]; !ok {
 		c.RUnlock()
 		l.Error().
-			Str("processor_type", config.Type).
-			Msgf("Cannot find processor with type '%s'", config.Type)
+			Str("processor_name", name).
+			Msgf("Cannot find processor with name '%s'", name)
 		return
 	}
-	p := c.processors[config.Type]
+	p := c.processors[name]
 	c.RUnlock()
-	return p.Run(ctx, config, payload)
+	return p.Run(ctx, script, payload)
+}
+
+func (c *catalogStore) match(ctx context.Context, name string, match interface{}, payload *payload.Payload) (matched bool, err error) {
+	c.RLock()
+
+	l := logger(ctx)
+	if _, ok := c.processors[name]; !ok {
+		c.RUnlock()
+		l.Error().
+			Str("processor_name", name).
+			Msgf("Cannot find processor with name '%s'", name)
+		return
+	}
+	p := c.processors[name]
+	c.RUnlock()
+	return p.Match(ctx, match, payload)
 }

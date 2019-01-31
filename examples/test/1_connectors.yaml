@@ -13,5 +13,3 @@ connectors:
       interaction_callback: /slack/interaction
   http:
     type: http
-  cli:
-    type: cli

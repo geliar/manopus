@@ -1,0 +1,119 @@
+sequencer:
+  # Variables which will be accessible for every sequence
+  # through env object
+  env:
+    response: "Hello "
+  # List of inputs to be applied to step without specified inputs list
+  inputs:
+    - slack
+  processor: starlark
+  sequences:
+    - name: greating sequence # Name of the sequence for logs (optional)
+      steps: # List of the sequence steps
+        - name: ask for name # Name of the step for logs (optional)
+          match: (req['direct'] or req['mentioned']) and match_re(req['message'], '(Hi|hi|Hello|hello)')
+          script:
+            - resp.callback('Hi <@{}>, what is your name?'.format(req['user_id'])) #send plain response back to connector
+            - export["chat_user"] = req['user_id'] #export dict will be copied to next step
+        - name: greeting
+          timeout: 60 # Timeout for this step in seconds. Sequence will be reset if no matched events until timeout
+          match: (req['direct'] or req['mentioned']) and req['user_id'] == export['chat_user'] and match_re(req['message'], '(My|my) name is (?P<name>[A-Za-z]+)')
+          script: callback('{} {}'.format(env['response'], match['name']))
+    - name: approving sequence
+      steps:
+        - name: start
+          match: "match_re(req['message'], '^(<@.*> )?Approve: (?P<count>.*)')"
+          vars:
+            response:
+              user_name:
+                - *slack_user
+              attachments:
+                - callback_id: "approve_sequence_"
+                  attachment_type: "default"
+                  actions:
+                    - name: Approve
+                      text: "Approve"
+                      type: button
+                      value: approve
+                    - name: Decline
+                      text: "Decline"
+                      type: button
+                      value: decline
+              data: "Please click approve or decline"
+          script:
+            - vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(rand_int(10000))
+            - send('slack', vars["response"])
+            - callback('Asking users for {} approves'.format(match['count']))
+            - export['channel_id'] = req['channel_id']
+            - export['count'] = int(match['count'])
+            - export['callback_id'] = vars['response']['attachments'][0]['callback_id']
+            - export['users'] = vars['response']['user_name']
+        - name: approving
+          match: req['callback_id'] == export['callback_id'] and req['action_value'] == 'approve' and req['user_name'] in export['users']
+          script: |
+            export['count'] = export['count'] - 1
+            callback('Thank you!')
+            if export['count'] > 0:
+              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! {} approves left.'.format(req['user_id'], export['count'])})
+              repeat()
+            else:
+              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! Action approved!'.format(req['user_id'], export['count'])})
+    - name: repeating sequence
+      steps:
+        - name: repeat
+          match: "match_re(req['message'], '^(@.* )?Repeat: (?P<msg>.*)')"
+          script: callback(match['msg'])
+    - name: always direct response
+      steps:
+        - match: "match_re(req['message'], '^(@.* )Direct: (?P<msg>.*)')"
+          script: "send('slack', {'data': match['msg'], 'user_id': req['user_id'])"
+    - name: sleeping sequence
+      steps:
+      - name: sleep
+        match: req['mentioned'] and match_re(req['message'], '^sleep\((?P<duration>.*)\)')
+        max_execution_time: 60
+        script:
+              - sleep(match['duration'])
+              - callback('Was sleeping for {} seconds'.format(match['duration']))
+    - name: request debug sequence
+      steps:
+        - name: debug
+          match: "(req['direct'] or req['mentioned']) and match_re(req['message'], '(@.* )?Debug$')"
+          script: "callback(json_dump({'req': req, 'env': env}))"
+    - name: Debug HTTP
+      steps:
+        - inputs:
+          - http
+          match: 1 == 1
+          script: |
+            debug(type(req['http_method']))
+            debug(req['http_method']=='POST')
+    - name: HTTP request debug sequence
+      steps:
+        - name: http debug
+          inputs:
+            - http
+          match: match_re(req['http_uri'], '^/debug')
+          script: "callback(json_dump({'req': req, 'env': env}))"
+    - name: Message from HTTP to Slack
+      steps:
+        - inputs:
+            - http
+          match: match_re(req['http_path'], '^/message$') and type(var_get('req.http_form.message.0')) == 'string' and type(var_get('req.http_form.user.0')) == 'string'
+          script: |
+            send('slack', {'user_name': var_get('req.http_form.user.0'), 'data': var_get('req.http_form.message.0')})
+            callback('Sent "{}" to {}'.format(var_get('req.http_form.message.0'), var_get('req.http_form.user.0'))
+    - name: Message from JSON HTTP to Slack
+      steps:
+        - inputs:
+            - http
+          match: req['http_method'] == 'POST'
+          script: |
+            send('slack', {'user_name': var_get('req.http_json.user'), 'data': var_get('req.http_json.message')})
+            callback('Sent "{}" to {}'.format(var_get('req.http_json.message'), var_get('req.http_json.user')))
+    - name: Debug in JSON
+      steps:
+        - inputs:
+          - http
+          match: match_re(req['http_uri'], '^/json')
+          script: "callback(json_dump({'req': req, 'env': env'}))"
