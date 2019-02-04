@@ -62,14 +62,14 @@ func (p Starlark) run(ctx context.Context, script string, pl *payload.Payload) (
 	l.Debug().Str("script", script).
 		Msg("Executing script")
 	globals := p.makeGlobals(ctx, pl)
-	globals["callback"] = func(response interface{}) {
+	globals["respond"] = func(response interface{}) {
 		l.Debug().
-			Str("starlark_function", "callback").
-			Msg("Received callback response from script")
+			Str("starlark_function", "respond").
+			Msg("Received response from script")
 		if callback != nil {
 			l.Warn().
-				Str("starlark_function", "callback").
-				Msg("Got several callback calls from script, using data from last one")
+				Str("starlark_function", "respond").
+				Msg("Got several respond calls from script, using data from last one")
 		}
 		callback = response
 	}
@@ -345,7 +345,7 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 				Str("param-v", fmt.Sprint(v)).
 				Msg("Called function")
 		},
-		"rand_int": starlark.NewBuiltin("send", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		"rand_int": starlark.NewBuiltin("rand_int", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 			l := l.With().Str("starlark_function", "var_get").Logger()
 			if args.Len() != 1 || args.Index(0).Type() != "int" {
 				l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be rand_int(int).")

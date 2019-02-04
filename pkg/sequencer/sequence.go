@@ -33,6 +33,9 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 		}
 	}
 
+	newPayload := *(s.payload)
+	newPayload.Vars = step.Vars
+	newPayload.Req = event.Data
 	if step.Match != nil {
 		if s.sequenceConfig.Processor != "" {
 			processorName = s.sequenceConfig.Processor
@@ -41,19 +44,14 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 			processorName = step.Processor
 		}
 
-		newPayload := *(s.payload)
-		newPayload.Vars = step.Vars
-		newPayload.Req = event.Data
-
 		matched, _ = processor.Match(ctx, processorName, step.Match, &newPayload)
-		if matched {
-			*(s.payload) = newPayload
-			s.latestMatch = time.Now()
+		if !matched {
+			return false
 		}
-		return matched
 	}
-	l.Warn().Msg("match field is empty for the step, it will be never executed")
-	return false
+	*(s.payload) = newPayload
+	s.latestMatch = time.Now()
+	return true
 }
 
 func (s *Sequence) Run(ctx context.Context, processorName string) (next processor.NextStatus, callback interface{}, responses []payload.Response) {

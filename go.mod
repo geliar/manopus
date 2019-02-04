@@ -3,7 +3,7 @@ module github.com/geliar/manopus
 require (
 	github.com/DLag/midsimple v0.1.1
 	github.com/DLag/starlight v0.0.0-20190131132040-cc75178c5236
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.1
 	github.com/geliar/yaml v0.0.0-20181219141838-8ed8a3331646
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
