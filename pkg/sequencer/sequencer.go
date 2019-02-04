@@ -123,7 +123,7 @@ func (s *Sequencer) sendToOutput(ctx context.Context, response *payload.Response
 	if response == nil {
 		return
 	}
-	output.Send(ctx, response)
+	_ = output.Send(ctx, response)
 }
 
 func (s *Sequencer) pushnew(sc SequenceConfig) {

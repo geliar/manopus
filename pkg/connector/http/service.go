@@ -42,12 +42,13 @@ func (c *HTTP) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.handlers = append(c.handlers, handler)
 }
 
-func (c *HTTP) Send(ctx context.Context, response *payload.Response) {
+func (c *HTTP) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
 		Str("input_name", response.Request.Input).
 		Str("input_event_id", response.Request.ID).
 		Msg("Received Send event")
+	return nil
 }
 
 func (c *HTTP) Stop(ctx context.Context) {
@@ -99,8 +100,6 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		e.Data["http_json"] = v
 	}
-	c.RLock()
-	defer c.RUnlock()
 	response := c.sendEventToHandlers(r.Context(), &e)
 	if response == nil {
 		return

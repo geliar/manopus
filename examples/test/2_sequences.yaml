@@ -19,6 +19,58 @@ sequencer:
           timeout: 60 # Timeout for this step in seconds. Sequence will be reset if no matched events until timeout
           match: (req['direct'] or req['mentioned']) and req['user_id'] == export['chat_user'] and match_re(req['message'], '(My|my) name is (?P<name>[A-Za-z]+)')
           script: respond('{} {}'.format(env['response'], match['name']))
+    - name: voting
+      steps:
+        - name: start
+          match: "match_re(req['message'], '^(<@.*> )?Vote: (?P<msg>.*)')"
+          vars:
+            response:
+              attachments:
+                - callback_id: "voting_"
+                  attachment_type: "default"
+                  actions:
+                    - name: "Yes"
+                      text: "Yes"
+                      type: button
+                      value: "yes"
+                    - name: "No"
+                      text: "No"
+                      type: button
+                      value: "no"
+                    - name: Stop
+                      text: "Stop"
+                      type: button
+                      value: stop
+              data: ""
+          script: |
+            vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(rand_int(10000))
+            vars['response']['data'] = 'Voting by <@{}>: {}'.format(req['user_id'], match['msg'])
+            vars['response']['channel_id'] = req['channel_id']
+            call('slack', vars["response"])
+            export['yes'] = 0
+            export['no'] = 0
+            export['callback_id'] = vars['response']['attachments'][0]['callback_id']
+            export['users'] = list()
+            export['msg'] = match['msg']
+        - name: voting
+          match: req['callback_id'] == export['callback_id'] and ((req['action_value'] in ('yes', 'no') and req['user_id'] not in export['users']) or req['action_value'] == 'stop')
+          script: |
+            export['users'].append(req['user_id'])
+            if req['action_value'] == 'yes':
+              export['yes']+=1
+              repeat()
+            if req['action_value'] == 'no':
+              export['no']+=1
+              repeat()
+            if req['action_value'] == 'stop':
+              if export['yes']>export['no']:
+                result = 'Yes'
+              else:
+                result = 'No'
+              if export['yes']==export['no']:
+                result = 'Draw'
+              respond('Voting has been stopped by <@{}>\nResult is *{}*: Yes({}), No({})'.format(req['user_id'], result, export['yes'], export['no']))
+              stop()
     - name: approving sequence
       steps:
         - name: start
@@ -40,7 +92,7 @@ sequencer:
                       value: decline
               data: "Please click approve or decline"
           script:
-            - vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(rand_int(10000))
+            - vars['response']['attachments'][0]['callback_id']+=str(rand_int(10000))
             - send('slack', vars["response"])
             - respond('Asking users for {} approves'.format(match['count']))
             - export['channel_id'] = req['channel_id']
@@ -50,10 +102,10 @@ sequencer:
         - name: approving
           match: req['callback_id'] == export['callback_id'] and req['action_value'] == 'approve' and req['user_name'] in export['users']
           script: |
-            export['count'] = export['count'] - 1
+            export['count']-=1
             respond('Thank you!')
             if export['count'] > 0:
-              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! {} approves left.'.format(req['user_id'], export['count'])})
+              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! {} approve(s) left.'.format(req['user_id'], export['count'])})
               repeat()
             else:
               send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! Action approved!'.format(req['user_id'], export['count'])})

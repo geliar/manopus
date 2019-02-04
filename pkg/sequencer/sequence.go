@@ -12,6 +12,7 @@ import (
 type Sequence struct {
 	sequenceConfig SequenceConfig
 	step           int
+	event          *payload.Event
 	payload        *payload.Payload
 	latestMatch    time.Time
 }
@@ -50,6 +51,7 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 		}
 	}
 	*(s.payload) = newPayload
+	s.event = event
 	s.latestMatch = time.Now()
 	return true
 }
@@ -80,7 +82,7 @@ func (s *Sequence) Run(ctx context.Context, processorName string) (next processo
 		if newPayload.Export == nil {
 			newPayload.Export = make(map[string]interface{})
 		}
-		next, callback, responses, _ = processor.Run(runCtx, processorName, step.Script, &newPayload)
+		next, callback, responses, _ = processor.Run(runCtx, processorName, step.Script, s.event, &newPayload)
 		*(s.payload) = newPayload
 		s.latestMatch = time.Now()
 		return

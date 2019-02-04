@@ -9,6 +9,6 @@ import (
 type Driver interface {
 	Name() string
 	Type() string
-	Send(ctx context.Context, response *payload.Response)
+	Send(ctx context.Context, response *payload.Response) map[string]interface{}
 	Stop(ctx context.Context)
 }

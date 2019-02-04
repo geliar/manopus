@@ -62,7 +62,7 @@ func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.handlers = append(c.handlers, handler)
 }
 
-func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
+func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
 		Str("input_name", response.Request.Input).
@@ -76,19 +76,19 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 		text = string(v)
 	default:
 		l.Error().Msgf("Unknown type of 'data' field of response %T", response.Data["data"])
-		return
+		return nil
 	}
 	if text == "" {
 		l.Debug().
 			Msg("Text field is empty")
-		return
+		return nil
 	}
 
 	chids := c.getChannelIDs(ctx, response)
 
 	if chids == nil {
 		l.Warn().Msg("Cannot determine channel_id")
-		return
+		return nil
 	}
 
 	var attachments []slack.Attachment
@@ -107,7 +107,11 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) {
 				Msg("Error unmarshalling attachments")
 		}
 	}
-	c.sendToChannel(ctx, chids, attachments, text)
+	res := c.sendToChannels(ctx, chids, attachments, text)
+	if res == nil {
+		return nil
+	}
+	return map[string]interface{}{"result": res}
 }
 
 func (c *SlackRTM) Stop(ctx context.Context) {
@@ -546,7 +550,7 @@ func (c *SlackRTM) openIM(ctx context.Context, userID string) (imID string) {
 	return imID
 }
 
-func (c *SlackRTM) sendToChannel(ctx context.Context, channels []string, attachments []slack.Attachment, message string) {
+func (c *SlackRTM) sendToChannels(ctx context.Context, channels []string, attachments []slack.Attachment, message string) (result []map[string]interface{}) {
 	l := logger(ctx)
 	l.Debug().
 		Strs("slack_channel", channels).
@@ -556,9 +560,13 @@ func (c *SlackRTM) sendToChannel(ctx context.Context, channels []string, attachm
 		IconEmoji: c.config.botIcon.IconEmoji,
 		LinkNames: 1,
 		AsUser:    false,
+		Markdown:  true,
 	}
+
 	for _, channel := range channels {
-		_, _, _, err := c.rtm.SendMessageContext(ctx,
+		var err error
+		r := make(map[string]interface{})
+		r["channel"], r["thread_ts"], r["text"], err = c.rtm.SendMessageContext(ctx,
 			channel,
 			slack.MsgOptionText(message, false),
 			slack.MsgOptionParse(true),
@@ -569,7 +577,9 @@ func (c *SlackRTM) sendToChannel(ctx context.Context, channels []string, attachm
 		if err != nil {
 			l.Error().Err(err).Msg("Error sending Slack message")
 		}
+		result = append(result, r)
 	}
+	return
 }
 
 func (c *SlackRTM) getChannelIDs(ctx context.Context, response *payload.Response) []string {

@@ -18,8 +18,8 @@ func Register(ctx context.Context, name string, driver Driver) {
 	catalog.register(ctx, name, driver)
 }
 
-func Send(ctx context.Context, response *payload.Response) {
-	catalog.send(ctx, response)
+func Send(ctx context.Context, response *payload.Response) map[string]interface{} {
+	return catalog.send(ctx, response)
 }
 
 func StopAll(ctx context.Context) {
@@ -48,18 +48,18 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Driver)
 		Msg("Registered new output driver")
 }
 
-func (c *catalogStore) send(ctx context.Context, response *payload.Response) {
+func (c *catalogStore) send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	c.RLock()
 	l := logger(ctx).With().Str("output_driver_name", response.Output).Logger()
 	if _, ok := c.outputs[response.Output]; !ok {
 		c.RUnlock()
 		l.Error().
 			Msgf("Cannot find output driver with name '%s'", response.Output)
-		return
+		return nil
 	}
 	o := c.outputs[response.Output]
 	c.RUnlock()
-	o.Send(l.WithContext(ctx), response)
+	return o.Send(l.WithContext(ctx), response)
 }
 
 func (c *catalogStore) stopAll(ctx context.Context) {

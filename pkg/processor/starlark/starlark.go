@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geliar/manopus/pkg/output"
+
 	"github.com/DLag/starlight/convert"
 	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
@@ -33,11 +35,11 @@ func (p *Starlark) Type() string {
 	return serviceName
 }
 
-func (p *Starlark) Run(ctx context.Context, rawScript interface{}, payload *payload.Payload) (next processor.NextStatus, callback interface{}, responses []payload.Response, err error) {
+func (p *Starlark) Run(ctx context.Context, rawScript interface{}, event *payload.Event, payload *payload.Payload) (next processor.NextStatus, callback interface{}, responses []payload.Response, err error) {
 	next = processor.NextContinue
 	script := p.collectScript(ctx, rawScript)
 	var result *bool
-	result, callback, responses, err = p.run(ctx, script, payload)
+	result, callback, responses, err = p.run(ctx, script, event, payload)
 	if result == nil && err == nil {
 		next = processor.NextContinue
 		return
@@ -57,7 +59,7 @@ func (p Starlark) Match(ctx context.Context, rawMatch interface{}, payload *payl
 	return
 }
 
-func (p Starlark) run(ctx context.Context, script string, pl *payload.Payload) (result *bool, callback interface{}, responses []payload.Response, err error) {
+func (p Starlark) run(ctx context.Context, script string, event *payload.Event, pl *payload.Payload) (result *bool, respond interface{}, responses []payload.Response, err error) {
 	l := logger(ctx)
 	l.Debug().Str("script", script).
 		Msg("Executing script")
@@ -66,12 +68,12 @@ func (p Starlark) run(ctx context.Context, script string, pl *payload.Payload) (
 		l.Debug().
 			Str("starlark_function", "respond").
 			Msg("Received response from script")
-		if callback != nil {
+		if respond != nil {
 			l.Warn().
 				Str("starlark_function", "respond").
 				Msg("Got several respond calls from script, using data from last one")
 		}
-		callback = response
+		respond = response
 	}
 	globals["send"] = starlark.NewBuiltin("send", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		l := l.With().Str("starlark_function", "send").Logger()
@@ -79,14 +81,37 @@ func (p Starlark) run(ctx context.Context, script string, pl *payload.Payload) (
 			l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be send(string, dict).")
 			return starlark.None, errors.New("wrong args, should be send(string, dict).")
 		}
-		output := args.Index(0).(starlark.String).GoString()
+		outputName := args.Index(0).(starlark.String).GoString()
 		response := convert.FromDict(args.Index(1).(*starlark.Dict))
 		l.Debug().
-			Str("output_name", output).
+			Str("output_name", outputName).
 			Msg("Received response from script")
 		converted := p.convertToStringMap(response).(map[string]interface{})
-		responses = append(responses, payload.Response{Output: output, Data: converted})
+		responses = append(responses, payload.Response{Output: outputName, Data: converted})
 		return starlark.None, nil
+	})
+	globals["call"] = starlark.NewBuiltin("call", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		l := l.With().Str("starlark_function", "call").Logger()
+		if args.Len() != 2 || args.Index(0).Type() != "string" || args.Index(1).Type() != "dict" {
+			l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be call(string, dict).")
+			return starlark.None, errors.New("wrong args, should be call(string, dict).")
+		}
+		outputName := args.Index(0).(starlark.String).GoString()
+		response := convert.FromDict(args.Index(1).(*starlark.Dict))
+		l.Debug().
+			Str("output_name", outputName).
+			Msg("Received call request from script")
+		converted := p.convertToStringMap(response).(map[string]interface{})
+		res := output.Send(ctx, &payload.Response{ID: event.ID, Output: outputName, Data: converted, Request: event})
+		if res == nil {
+			return starlark.None, nil
+		}
+		v, err := toValue(res)
+		if err != nil {
+			l.Error().Err(err).Msg("Cannot convert output response to Starlark value")
+			return starlark.None, err
+		}
+		return v, nil
 	})
 	globals["repeat"] = func() {
 		l.Debug().
@@ -119,7 +144,7 @@ func (p Starlark) run(ctx context.Context, script string, pl *payload.Payload) (
 	if result != nil {
 		l.Debug().Msgf("Script execution result is %t", *result)
 	}
-	return result, callback, responses, nil
+	return result, respond, responses, nil
 }
 
 func (p Starlark) match(ctx context.Context, script string, pl *payload.Payload) (matched bool, err error) {
