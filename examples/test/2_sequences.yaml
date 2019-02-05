@@ -43,7 +43,7 @@ sequencer:
                       value: stop
               data: ""
           script: |
-            vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(rand_int(10000))
+            vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(rand.int(10000))
             vars['response']['data'] = 'Voting by <@{}>: {}'.format(req['user_id'], match['msg'])
             vars['response']['channel_id'] = req['channel_id']
             call('slack', vars["response"])
@@ -92,7 +92,7 @@ sequencer:
                       value: decline
               data: "Please click approve or decline"
           script:
-            - vars['response']['attachments'][0]['callback_id']+=str(rand_int(10000))
+            - vars['response']['attachments'][0]['callback_id']+=str(rand.int(10000))
             - send('slack', vars["response"])
             - respond('Asking users for {} approves'.format(match['count']))
             - export['channel_id'] = req['channel_id']
@@ -121,16 +121,31 @@ sequencer:
     - name: sleeping sequence
       steps:
       - name: sleep
-        match: req['mentioned'] and match_re(req['message'], '^sleep\((?P<duration>.*)\)')
+        match: req['direct'] and match_re(req['message'], '^sleep\((?P<duration>.*)\)')
         max_execution_time: 60
         script:
-              - sleep(match['duration'])
+              - sleep(int(match['duration'])*1000)
               - respond('Was sleeping for {} seconds'.format(match['duration']))
+    - name: timer sequence
+      steps:
+      - name: set timer
+        match: req['direct'] and match_re(req['message'], '^timer\((?P<duration>.*)\)')
+        script: |
+          d = call('timer', {'function': 'timer', 'duration': match['duration']})
+          export['timer_id'] = d['timer_id']
+          export['duration'] = match['duration']
+          export['channel_id'] = req['channel_id']
+      - name: receive timer event
+        inputs:
+          - timer
+        match: req['timer_id'] == export['timer_id']
+        script: |
+          call('slack', {'channel_id': export['channel_id'], 'data': 'Was sleeping for {} seconds'.format(match['duration'])})
     - name: request debug sequence
       steps:
         - name: debug
           match: "(req['direct'] or req['mentioned']) and match_re(req['message'], '(@.* )?Debug$')"
-          script: "respond(json_dump({'req': req, 'env': env}))"
+          script: "respond(json.dump({'req': req, 'env': env}))"
     - name: Debug HTTP
       steps:
         - inputs:
@@ -144,7 +159,7 @@ sequencer:
           inputs:
             - http
           match: match_re(req['http_uri'], '^/debug')
-          script: "respond(json_dump({'req': req, 'env': env}))"
+          script: "respond(json.dump({'req': req, 'env': env}))"
     - name: Message from HTTP to Slack
       steps:
         - inputs:
@@ -166,4 +181,4 @@ sequencer:
         - inputs:
           - http
           match: match_re(req['http_uri'], '^/json')
-          script: "respond(json_dump({'req': req, 'env': env'}))"
+          script: "respond(json.dump({'req': req, 'env': env'}))"

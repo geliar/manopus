@@ -8,6 +8,37 @@ import (
 	"go.starlark.net/starlark"
 )
 
+func convertToStringMap(v interface{}) interface{} {
+	switch i := v.(type) {
+	case *convert.GoMap:
+		return convertToStringMap(i.Value().Interface())
+	case starlark.StringDict:
+		m := convert.FromStringDict(i)
+		for key := range m {
+			m[key] = convertToStringMap(m[key])
+		}
+		return m
+	case map[string]interface{}:
+		for key := range i {
+			i[key] = convertToStringMap(i[key])
+		}
+		return i
+	case map[interface{}]interface{}:
+		converted := make(map[string]interface{})
+		for key, value := range i {
+			strKey := fmt.Sprintf("%v", key)
+			converted[strKey] = convertToStringMap(value)
+		}
+		return converted
+	case []interface{}:
+		for key, value := range i {
+			i[key] = convertToStringMap(value)
+		}
+		return i
+	}
+	return v
+}
+
 func toValue(v interface{}) (starlark.Value, error) {
 	if val, ok := v.(starlark.Value); ok {
 		return val, nil

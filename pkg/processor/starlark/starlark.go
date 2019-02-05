@@ -2,7 +2,6 @@ package starlark
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -86,7 +85,7 @@ func (p Starlark) run(ctx context.Context, script string, event *payload.Event, 
 		l.Debug().
 			Str("output_name", outputName).
 			Msg("Received response from script")
-		converted := p.convertToStringMap(response).(map[string]interface{})
+		converted := convertToStringMap(response).(map[string]interface{})
 		responses = append(responses, payload.Response{Output: outputName, Data: converted})
 		return starlark.None, nil
 	})
@@ -101,7 +100,7 @@ func (p Starlark) run(ctx context.Context, script string, event *payload.Event, 
 		l.Debug().
 			Str("output_name", outputName).
 			Msg("Received call request from script")
-		converted := p.convertToStringMap(response).(map[string]interface{})
+		converted := convertToStringMap(response).(map[string]interface{})
 		res := output.Send(ctx, &payload.Response{ID: event.ID, Output: outputName, Data: converted, Request: event})
 		if res == nil {
 			return starlark.None, nil
@@ -140,7 +139,7 @@ func (p Starlark) run(ctx context.Context, script string, event *payload.Event, 
 		r := false
 		return &r, nil, nil, err
 	}
-	pl.Export = p.convertToStringMap(convert.FromDict(globals["export"].(*starlark.Dict))).(map[string]interface{})
+	pl.Export = convertToStringMap(convert.FromDict(globals["export"].(*starlark.Dict))).(map[string]interface{})
 	if result != nil {
 		l.Debug().Msgf("Script execution result is %t", *result)
 	}
@@ -225,37 +224,6 @@ func (Starlark) soleExpr(f *syntax.File) syntax.Expr {
 	return nil
 }
 
-func (p Starlark) convertToStringMap(v interface{}) interface{} {
-	switch i := v.(type) {
-	case *convert.GoMap:
-		return p.convertToStringMap(i.Value().Interface())
-	case starlark.StringDict:
-		m := convert.FromStringDict(i)
-		for key := range m {
-			m[key] = p.convertToStringMap(m[key])
-		}
-		return m
-	case map[string]interface{}:
-		for key := range i {
-			i[key] = p.convertToStringMap(i[key])
-		}
-		return i
-	case map[interface{}]interface{}:
-		converted := make(map[string]interface{})
-		for key, value := range i {
-			strKey := fmt.Sprintf("%v", key)
-			converted[strKey] = p.convertToStringMap(value)
-		}
-		return converted
-	case []interface{}:
-		for key, value := range i {
-			i[key] = p.convertToStringMap(value)
-		}
-		return i
-	}
-	return v
-}
-
 func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map[string]interface{} {
 	l := logger(ctx)
 	env, _ := toValue(payload.Env)
@@ -272,31 +240,7 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 		"sleep": func(duration int) {
 			time.Sleep(time.Duration(duration) * time.Millisecond)
 		},
-		"json_dump": func(v map[interface{}]interface{}) string {
-			converted := p.convertToStringMap(v)
-			b, err := json.Marshal(converted)
-			if err != nil {
-				l := logger(ctx)
-				l.Error().
-					Err(err).
-					Str("starlark_function", "json_dump").
-					Msg("Error when marshaling json")
-				return ""
-			}
-			return string(b)
-		},
-		"json_parse": func(buf string) (v map[string]interface{}) {
-			err := json.Unmarshal([]byte(buf), &v)
-			if err != nil {
-				l := logger(ctx)
-				l.Error().
-					Err(err).
-					Str("starlark_function", "json_parse").
-					Msg("Error when unmarshaling json")
-				return nil
-			}
-			return v
-		},
+		"json": NewJson(ctx),
 		"match_re": starlark.NewBuiltin("match_re", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 			//func(str string, re string) (matched bool) {
 			l := l.With().Str("starlark_function", "match_re").Logger()
@@ -370,14 +314,6 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 				Str("param-v", fmt.Sprint(v)).
 				Msg("Called function")
 		},
-		"rand_int": starlark.NewBuiltin("rand_int", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-			l := l.With().Str("starlark_function", "var_get").Logger()
-			if args.Len() != 1 || args.Index(0).Type() != "int" {
-				l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be rand_int(int).")
-				return starlark.None, errors.New("wrong args, should be rand_int(int)")
-			}
-			max, _ := args.Index(0).(starlark.Int).Int64()
-			return convert.ToValue(rand.Int63n(max))
-		}),
+		"rand": NewRand(ctx),
 	}
 }
