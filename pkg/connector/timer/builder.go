@@ -23,6 +23,14 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	i := new(Timer)
 	i.created = time.Now().UnixNano()
 	i.name = name
+	i.stopCh = make(chan struct{})
+	if config != nil {
+		ticker, _ := config["ticker"].(int)
+		if ticker > 0 {
+			go i.ticker(ctx, time.Duration(ticker)*time.Second)
+			l.Info().Msgf("Ticker will send event every %d seconds", ticker)
+		}
+	}
 	input.Register(ctx, name, i)
 	output.Register(ctx, name, i)
 }

@@ -19,6 +19,7 @@ type Timer struct {
 	name     string
 	handlers []input.Handler
 	stop     bool
+	stopCh   chan struct{}
 	mu       sync.RWMutex
 }
 
@@ -77,20 +78,23 @@ func (c *Timer) Send(ctx context.Context, response *payload.Response) map[string
 				ID:    id,
 				Data: map[string]interface{}{
 					"timer_id": id,
-					"now":      time.Now().UnixNano(),
+					"now":      time.Now().Unix(),
 				},
 			})
 		})
 		return map[string]interface{}{
 			"timer_id": id,
-			"now":      time.Now().UnixNano(),
+			"now":      time.Now().Unix(),
 		}
 	}
 	return nil
 }
 
 func (c *Timer) Stop(ctx context.Context) {
-	c.stop = true
+	if !c.stop {
+		c.stop = true
+		close(c.stopCh)
+	}
 }
 
 func (c *Timer) getID() string {
@@ -114,4 +118,27 @@ func (c *Timer) sendEventToHandlers(ctx context.Context, event *payload.Event) (
 		}
 	}
 	return
+}
+
+func (c *Timer) ticker(ctx context.Context, duration time.Duration) {
+	l := logger(ctx)
+	t := time.NewTicker(duration)
+	for {
+		select {
+		case <-c.stopCh:
+			l.Info().Msg("Ticker has been stopped")
+			t.Stop()
+			return
+		case now := <-t.C:
+			id := c.getID()
+			c.sendEventToHandlers(ctx, &payload.Event{
+				Input: serviceName,
+				ID:    id,
+				Data: map[string]interface{}{
+					"ticker_id": id,
+					"now":       now.Unix(),
+				},
+			})
+		}
+	}
 }

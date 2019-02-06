@@ -15,3 +15,5 @@ connectors:
     type: http
   timer:
     type: timer
+    config:
+      ticker: 60 #Send tick event every 60 seconds

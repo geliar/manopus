@@ -141,6 +141,14 @@ sequencer:
         match: req['timer_id'] == export['timer_id']
         script: |
           call('slack', {'channel_id': export['channel_id'], 'data': 'Was sleeping for {} seconds'.format(match['duration'])})
+    - name: ticker sequence
+      steps:
+        - name: receive ticker event
+          inputs:
+            - timer
+          match: req['ticker_id'] != ''
+          script: |
+            debug('Ticker tick')
     - name: request debug sequence
       steps:
         - name: debug
