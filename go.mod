@@ -2,6 +2,7 @@ module github.com/geliar/manopus
 
 require (
 	github.com/DLag/midsimple v0.1.1
+	github.com/DLag/starlark-modules v0.0.0-20190206090323-6338eefa9f95
 	github.com/DLag/starlight v0.0.0-20190131132040-cc75178c5236
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/geliar/yaml v0.0.0-20181219141838-8ed8a3331646
@@ -15,12 +16,11 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/xid v1.2.1 // indirect
 	github.com/rs/zerolog v1.11.0
-	github.com/starlight-go/starlight v0.0.0-20181207205707-b06f321544f3 // indirect
 	github.com/stretchr/testify v1.2.2
 	github.com/tidwall/gjson v1.1.3
 	github.com/tidwall/match v1.0.1 // indirect
 	github.com/tidwall/sjson v1.0.3
 	github.com/zenazn/goji v0.9.0 // indirect
-	go.starlark.net v0.0.0-20190125151930-1258e4d4fdc5
+	go.starlark.net v0.0.0-20190205022719-d6f2b0fdac05
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )

@@ -10,6 +10,8 @@ import (
 
 	"github.com/geliar/manopus/pkg/output"
 
+	sljson "github.com/DLag/starlark-modules/json"
+	slrandom "github.com/DLag/starlark-modules/random"
 	"github.com/DLag/starlight/convert"
 	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
@@ -179,7 +181,6 @@ func (p Starlark) match(ctx context.Context, script string, pl *payload.Payload)
 		}
 		if b, ok := v.(starlark.Bool); ok {
 			matched = bool(b)
-			l.Debug().Bool("matched", matched).Msg("Matched")
 		}
 		return matched, nil
 	}
@@ -240,7 +241,7 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 		"sleep": func(duration int) {
 			time.Sleep(time.Duration(duration) * time.Millisecond)
 		},
-		"json": NewJson(ctx),
+		"json": sljson.New(),
 		"match_re": starlark.NewBuiltin("match_re", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 			//func(str string, re string) (matched bool) {
 			l := l.With().Str("starlark_function", "match_re").Logger()
@@ -314,6 +315,6 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 				Str("param-v", fmt.Sprint(v)).
 				Msg("Called function")
 		},
-		"rand": NewRand(ctx),
+		"random": slrandom.New(),
 	}
 }

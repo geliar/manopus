@@ -43,7 +43,7 @@ sequencer:
                       value: stop
               data: ""
           script: |
-            vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(rand.int(10000))
+            vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(random.randint(0, 10000))
             vars['response']['data'] = 'Voting by <@{}>: {}'.format(req['user_id'], match['msg'])
             vars['response']['channel_id'] = req['channel_id']
             call('slack', vars["response"])
@@ -92,7 +92,7 @@ sequencer:
                       value: decline
               data: "Please click approve or decline"
           script:
-            - vars['response']['attachments'][0]['callback_id']+=str(rand.int(10000))
+            - vars['response']['attachments'][0]['callback_id']+=str(random.randint(0, 10000))
             - send('slack', vars["response"])
             - respond('Asking users for {} approves'.format(match['count']))
             - export['channel_id'] = req['channel_id']
