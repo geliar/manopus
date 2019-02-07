@@ -2,7 +2,7 @@ sequencer:
   # Variables which will be accessible for every sequence
   # through env object
   env:
-    response: "Hello "
+    response: "Hello"
   # List of inputs to be applied to step without specified inputs list
   inputs:
     - slack
@@ -13,7 +13,7 @@ sequencer:
         - name: ask for name # Name of the step for logs (optional)
           match: (req['direct'] or req['mentioned']) and match_re(req['message'], '(Hi|hi|Hello|hello)')
           script:
-            - resp.respond('Hi <@{}>, what is your name?'.format(req['user_id'])) #send plain response back to connector
+            - respond('Hi <@{}>, what is your name?'.format(req['user_id'])) #send plain response back to connector
             - export["chat_user"] = req['user_id'] #export dict will be copied to next step
         - name: greeting
           timeout: 60 # Timeout for this step in seconds. Sequence will be reset if no matched events until timeout
