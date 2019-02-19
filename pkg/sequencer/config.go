@@ -4,8 +4,8 @@ package sequencer
 type SequenceConfig struct {
 	//Name (optional) name of the sequence
 	Name string `yaml:"name" json:"name"`
-	//Parallel (optional) instances of this sequence could be executed in parallel
-	Parallel bool `yaml:"parallel" json:"parallel"`
+	//Single (optional) should this sequence run in single copy or run in parallel
+	Single bool `yaml:"single" json:"single"`
 	//Steps execution steps of the sequence
 	Steps []StepConfig `yaml:"steps" json:"steps"`
 	//Processor name of processor to run the script

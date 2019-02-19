@@ -129,6 +129,7 @@ sequencer:
               - sleep(int(match['duration'])*1000)
               - respond('Was sleeping for {} second(s)'.format(match['duration']))
     - name: timer sequence
+      single: true
       steps:
       - name: set timer
         match: req['direct'] and match_re(req['message'], '^timer\((?P<duration>.*)\)')

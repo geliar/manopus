@@ -101,7 +101,10 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		if s.stop {
 			return
 		}
-
+		if !seq.sequenceConfig.Single && seq.step == 0 {
+			l.Debug().Msg("Sequence can be executed in parallel. Creating new one.")
+			s.pushnew(seq.sequenceConfig)
+		}
 		//If this step is not last
 		if next == processor.NextRepeatStep ||
 			(seq.step < len(seq.sequenceConfig.Steps)-1 &&
@@ -159,10 +162,6 @@ func (s *Sequencer) load(ctx context.Context) error {
 	if err != nil {
 		l.Error().Err(err).Msg("Error on parsing store value")
 		return err
-	}
-	if tmp.Store == nil {
-		l.Info().Msg("No sequences are saved in store")
-		return nil
 	}
 	l.Info().Msgf("Found %d unfinished sequence(s)", s.queue.Len(ctx))
 	return nil
