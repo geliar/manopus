@@ -8,4 +8,7 @@ import (
 
 	//Processors
 	_ "github.com/geliar/manopus/pkg/processor/starlark"
+
+	//Stores
+	_ "github.com/geliar/manopus/pkg/store/boltdb"
 )

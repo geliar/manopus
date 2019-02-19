@@ -239,7 +239,13 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 		"export": export,
 		"match":  match,
 		"sleep": func(duration int) {
-			time.Sleep(time.Duration(duration) * time.Millisecond)
+			c := time.After(time.Duration(duration) * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				return
+			case <-c:
+				return
+			}
 		},
 		"json": sljson.New(),
 		"match_re": starlark.NewBuiltin("match_re", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

@@ -6,6 +6,8 @@ sequencer:
   # List of inputs to be applied to step without specified inputs list
   inputs:
     - slack
+  store: sequencer
+  store_key: sequencer_key
   processor: starlark
   sequences:
     - name: greating sequence # Name of the sequence for logs (optional)
@@ -125,7 +127,7 @@ sequencer:
         max_execution_time: 60
         script:
               - sleep(int(match['duration'])*1000)
-              - respond('Was sleeping for {} seconds'.format(match['duration']))
+              - respond('Was sleeping for {} second(s)'.format(match['duration']))
     - name: timer sequence
       steps:
       - name: set timer

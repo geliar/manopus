@@ -2,6 +2,7 @@ package sequencer
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/geliar/manopus/pkg/processor"
@@ -101,6 +102,44 @@ func (s *Sequence) TimedOut(ctx context.Context) bool {
 		return true
 	}
 	return false
+}
+
+func (s *Sequence) MarshalJSON() ([]byte, error) {
+	compat := struct {
+		SequenceConfig SequenceConfig
+		Step           int
+		Env            map[string]interface{}
+		Export         map[string]interface{}
+		LatestMatch    int64
+	}{
+		SequenceConfig: s.sequenceConfig,
+		Step:           s.step,
+		Env:            s.payload.Env,
+		Export:         s.payload.Export,
+		LatestMatch:    s.latestMatch.Unix(),
+	}
+	return json.Marshal(compat)
+}
+
+func (s *Sequence) UnmarshalJSON(buf []byte) (err error) {
+	compat := struct {
+		SequenceConfig SequenceConfig
+		Step           int
+		Env            map[string]interface{}
+		Export         map[string]interface{}
+		LatestMatch    int64
+	}{}
+	err = json.Unmarshal(buf, &compat)
+	if err != nil {
+		return
+	}
+	s.sequenceConfig = compat.SequenceConfig
+	s.step = compat.Step
+	s.payload = new(payload.Payload)
+	s.payload.Env = compat.Env
+	s.payload.Export = compat.Export
+	s.latestMatch = time.Unix(compat.LatestMatch, 0)
+	return
 }
 
 func contains(s []string, str string) bool {

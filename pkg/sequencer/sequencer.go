@@ -2,11 +2,14 @@ package sequencer
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
+	"sync/atomic"
 
 	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/payload"
 	"github.com/geliar/manopus/pkg/processor"
+	"github.com/geliar/manopus/pkg/store"
 )
 
 type Sequencer struct {
@@ -16,14 +19,24 @@ type Sequencer struct {
 	Inputs []string `yaml:"inputs"`
 	//Processor name of processor to run the scripts
 	Processor string `yaml:"processor"`
+	//Store name of store to save state of sequencer
+	Store string `yaml:"store"`
+	//StoreKey key string to use for storing sequencer state
+	StoreKey string `yaml:"store_key"`
 	//SequenceConfigs the list of sequence configs
 	SequenceConfigs []SequenceConfig `yaml:"sequences"`
 	queue           sequenceStack
 	stop            bool
 	sync.RWMutex
+	running int64
+	mainCtx context.Context
 }
 
 func (s *Sequencer) Init(ctx context.Context) {
+	s.mainCtx = ctx
+	if s.Store != "" && s.StoreKey != "" {
+		_ = s.load(ctx)
+	}
 	for _, sc := range s.SequenceConfigs {
 		s.pushnew(sc)
 	}
@@ -41,12 +54,14 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		l.Debug().Msg("Received event on stopped Sequencer")
 		return
 	}
+	atomic.AddInt64(&s.running, 1)
+	defer atomic.AddInt64(&s.running, -1)
 	gclist := s.queue.GC(ctx)
 	for _, seq := range gclist {
 		s.pushnew(seq.sequenceConfig)
 		l.Debug().Str("sequence_name", seq.sequenceConfig.Name).Msg("Cleaning timed out sequence")
 	}
-
+	ctx = mergeContexts(s.mainCtx, ctx)
 	sequences := s.queue.Match(ctx, s.Inputs, s.Processor, event)
 	for _, seq := range sequences {
 		if s.stop {
@@ -60,8 +75,8 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		l.Debug().
 			Msg("Event matched")
 		var next processor.NextStatus
-		// Running specified processor
 
+		// Running specified processor
 		next, callback, responses := seq.Run(ctx, s.Processor)
 
 		if callback != nil {
@@ -103,7 +118,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 			l.Debug().
 				Msg("Next step")
 		} else {
-			//If it is last step starting sequence from beginning
+			//If it is the last step starting sequence from beginning
 			s.pushnew(seq.sequenceConfig)
 			l.Debug().Msg("Sequence is finished. Creating new one.")
 		}
@@ -115,8 +130,62 @@ func (s *Sequencer) Stop(ctx context.Context) {
 	l := logger(ctx)
 	l.Info().Msg("Shutting down sequencer")
 	s.stop = true
+	if r := atomic.LoadInt64(&s.running); r != 0 {
+		l.Info().Msgf("Waiting for %d running sequence(s)", r)
+	}
 	s.Lock()
 	defer s.Unlock()
+	_ = s.save(ctx)
+}
+
+func (s *Sequencer) load(ctx context.Context) error {
+	l := logger(ctx)
+	l.Info().Msg("Loading saved sequences from store")
+	buf, err := store.Load(ctx, s.Store, s.StoreKey)
+	if err != nil {
+		l.Error().Err(err).Msg("Error on loading from store")
+		return err
+	}
+
+	if len(buf) == 0 {
+		l.Info().Msg("Sequence store is empty")
+		return nil
+	}
+	var tmp struct {
+		Store *sequenceStack
+	}
+	tmp.Store = &s.queue
+	err = json.Unmarshal(buf, &tmp)
+	if err != nil {
+		l.Error().Err(err).Msg("Error on parsing store value")
+		return err
+	}
+	if tmp.Store == nil {
+		l.Info().Msg("No sequences are saved in store")
+		return nil
+	}
+	l.Info().Msgf("Found %d unfinished sequence(s)", s.queue.Len(ctx))
+	return nil
+}
+
+func (s *Sequencer) save(ctx context.Context) error {
+	l := logger(ctx)
+	l.Info().Msg("Saving unfinished sequences to store")
+	var tmp struct {
+		Store *sequenceStack
+	}
+	tmp.Store = &s.queue
+	buf, err := json.Marshal(tmp)
+	if err != nil {
+		l.Error().Err(err).Msg("Error on dumping sequences to JSON")
+		return err
+	}
+	err = store.Save(ctx, s.Store, s.StoreKey, buf)
+	if err != nil {
+		l.Error().Err(err).Msg("Error on saving to store")
+		return err
+	}
+	return nil
 }
 
 func (s *Sequencer) sendToOutput(ctx context.Context, response *payload.Response) {

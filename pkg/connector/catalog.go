@@ -16,7 +16,7 @@ func Register(ctx context.Context, name string, driver Builder) {
 	catalog.register(ctx, name, driver)
 }
 
-func Configure(ctx context.Context, name string, connector ConnectorConfig) {
+func Configure(ctx context.Context, name string, connector Config) {
 	catalog.configure(ctx, name, connector)
 }
 
@@ -39,7 +39,7 @@ func (c *catalogStore) register(ctx context.Context, name string, driver Builder
 		Msg("Registered new connector")
 }
 
-func (c *catalogStore) configure(ctx context.Context, name string, connector ConnectorConfig) {
+func (c *catalogStore) configure(ctx context.Context, name string, connector Config) {
 	c.RLock()
 	defer c.RUnlock()
 	l := logger(ctx)

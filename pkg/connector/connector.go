@@ -2,7 +2,7 @@ package connector
 
 import "context"
 
-type ConnectorConfig struct {
+type Config struct {
 	Type   string                 `yaml:"type"`
 	Config map[string]interface{} `yaml:"config"`
 }

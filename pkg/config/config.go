@@ -12,6 +12,7 @@ import (
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/log"
 	"github.com/geliar/manopus/pkg/sequencer"
+	"github.com/geliar/manopus/pkg/store"
 
 	"github.com/geliar/yaml"
 )
@@ -24,8 +25,10 @@ func init() {
 type Config struct {
 	//ShutdownTimeout timeout of graceful shutdown
 	ShutdownTimeout int `yaml:"shutdown_timeout"`
+	//Stores describe stores structure
+	Stores map[string]store.Config `yaml:"stores"`
 	//Connectors describe connectors structure
-	Connectors map[string]connector.ConnectorConfig `yaml:"connectors"`
+	Connectors map[string]connector.Config `yaml:"connectors"`
 	//Sequencer config
 	Sequencer sequencer.Sequencer `yaml:"sequencer"`
 	//HTTP server config
@@ -75,9 +78,14 @@ func InitConfig(ctx context.Context, configs []string) (*Config, *sequencer.Sequ
 		connector.Configure(ctx, i, c.Connectors[i])
 	}
 
+	//Stores
+	for i := range c.Stores {
+		store.ConfigureStore(ctx, i, c.Stores[i])
+	}
+
 	//Sequencer
 	c.Sequencer.Init(ctx)
 	input.RegisterHandlerAll(ctx, c.Sequencer.Roll)
-
+	l.Info().Msg("Configuration stage is complete")
 	return &c, &c.Sequencer, h
 }

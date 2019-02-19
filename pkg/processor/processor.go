@@ -16,7 +16,7 @@ const (
 
 //Processor represents interface of script executor
 type Processor interface {
-	//Output get type of the Processor
+	//Type get type of the Processor
 	Type() string
 	//Run execution of script
 	Run(ctx context.Context, script interface{}, event *payload.Event, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error)

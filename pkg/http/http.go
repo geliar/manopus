@@ -19,6 +19,7 @@ type HTTPServer struct {
 	routes       map[string]http.Handler
 	defaultRoute http.Handler
 	sync.RWMutex
+	mainCtx context.Context
 }
 
 var server HTTPServer
@@ -30,6 +31,7 @@ func Init(ctx context.Context, config HTTPConfig) *HTTPServer {
 	}
 
 	server.config = config
+	server.mainCtx = ctx
 	server.Start(ctx)
 	return &server
 }

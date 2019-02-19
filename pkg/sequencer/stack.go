@@ -2,6 +2,7 @@ package sequencer
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"sync"
 
@@ -68,8 +69,19 @@ func (s *sequenceStack) GC(ctx context.Context) (sequences []*Sequence) {
 	return
 }
 
+func (s *sequenceStack) Len(ctx context.Context) (len int) {
+	s.RLock()
+	defer s.RUnlock()
+	elem := s.first
+	for elem != nil {
+		len++
+		elem = elem.next
+	}
+	return
+}
+
 // pop removes element from stack.
-// Warning: pop is not threadsafe sequenceStack should be locked before use
+// Warning: pop is not thread-safe sequenceStack should be locked before use
 func (s *sequenceStack) pop(elem *contextElement) {
 	if elem.next != nil {
 		elem.next.previous = elem.previous
@@ -83,7 +95,7 @@ func (s *sequenceStack) pop(elem *contextElement) {
 }
 
 // push adds element to the beginning of the stack.
-// Warning: push is not threadsafe sequenceStack should be locked before use
+// Warning: push is not thread-safe sequenceStack should be locked before use
 func (s *sequenceStack) push(sequence *Sequence) {
 	e := &contextElement{next: s.first, sequence: sequence}
 	if s.first != nil {
@@ -93,7 +105,7 @@ func (s *sequenceStack) push(sequence *Sequence) {
 }
 
 // exists checks existence of the element in the stack.
-// Warning: exists is not threadsafe sequenceStack should be locked before use
+// Warning: exists is not thread-safe sequenceStack should be locked before use
 func (s *sequenceStack) exists(sequence *Sequence) bool {
 	elem := s.first
 	for elem != nil {
@@ -103,4 +115,33 @@ func (s *sequenceStack) exists(sequence *Sequence) bool {
 		elem = elem.next
 	}
 	return false
+}
+
+func (s *sequenceStack) MarshalJSON() ([]byte, error) {
+	s.Lock()
+	defer s.Unlock()
+	var v []Sequence
+	elem := s.first
+	for elem != nil {
+		if elem.sequence.step != 0 {
+			v = append(v, *(elem.sequence))
+		}
+		elem = elem.next
+	}
+	return json.Marshal(v)
+}
+
+func (s *sequenceStack) UnmarshalJSON(buf []byte) (err error) {
+	s.Lock()
+	defer s.Unlock()
+	var v []Sequence
+
+	err = json.Unmarshal(buf, &v)
+	if err != nil {
+		return
+	}
+	for _, e := range v {
+		s.push(&e)
+	}
+	return
 }

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geliar/manopus/pkg/store"
+
 	"github.com/geliar/manopus/pkg/config"
 	"github.com/geliar/manopus/pkg/http"
 	"github.com/geliar/manopus/pkg/input"
@@ -67,6 +69,7 @@ func wait(ctx context.Context, cancel context.CancelFunc, cfg *config.Config, se
 				})
 			}
 			sequencerInstance.Stop(ctx)
+			store.StopAll(ctx)
 			wg := sync.WaitGroup{}
 			wg.Add(1)
 			go func() {
