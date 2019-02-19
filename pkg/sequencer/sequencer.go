@@ -74,6 +74,10 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		ctx = l.WithContext(ctx)
 		l.Debug().
 			Msg("Event matched")
+		if !seq.sequenceConfig.Single && seq.step == 0 {
+			l.Debug().Msg("Sequence can be executed in parallel. Creating new one.")
+			s.pushnew(seq.sequenceConfig)
+		}
 		var next processor.NextStatus
 
 		// Running specified processor
@@ -100,10 +104,6 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 
 		if s.stop {
 			return
-		}
-		if !seq.sequenceConfig.Single && seq.step == 0 {
-			l.Debug().Msg("Sequence can be executed in parallel. Creating new one.")
-			s.pushnew(seq.sequenceConfig)
 		}
 		//If this step is not last
 		if next == processor.NextRepeatStep ||
