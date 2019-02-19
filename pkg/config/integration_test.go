@@ -18,7 +18,7 @@ func TestInitConfig(t *testing.T) {
 	l := log.Logger
 	ctx := l.WithContext(context.Background())
 
-	c, s, h := InitConfig(ctx, []string{"../../examples/test"})
+	c, s, h := InitConfig(ctx, []string{"../../examples/test"}, false)
 	a.NotNil(c)
 	a.NotNil(s)
 	a.NotNil(h)

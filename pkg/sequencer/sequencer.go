@@ -32,7 +32,7 @@ type Sequencer struct {
 	mainCtx context.Context
 }
 
-func (s *Sequencer) Init(ctx context.Context) {
+func (s *Sequencer) Init(ctx context.Context, noload bool) {
 	s.mainCtx = ctx
 	if s.Store != "" && s.StoreKey != "" {
 		_ = s.load(ctx)

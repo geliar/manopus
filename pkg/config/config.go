@@ -35,7 +35,7 @@ type Config struct {
 	HTTP http.HTTPConfig
 }
 
-func InitConfig(ctx context.Context, configs []string) (*Config, *sequencer.Sequencer, *http.HTTPServer) {
+func InitConfig(ctx context.Context, configs []string, noload bool) (*Config, *sequencer.Sequencer, *http.HTTPServer) {
 	l := logger(ctx)
 
 	var files []string
@@ -84,7 +84,7 @@ func InitConfig(ctx context.Context, configs []string) (*Config, *sequencer.Sequ
 	}
 
 	//Sequencer
-	c.Sequencer.Init(ctx)
+	c.Sequencer.Init(ctx, noload)
 	input.RegisterHandlerAll(ctx, c.Sequencer.Roll)
 	l.Info().Msg("Configuration stage is complete")
 	return &c, &c.Sequencer, h

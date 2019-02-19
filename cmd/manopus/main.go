@@ -20,6 +20,7 @@ import (
 )
 
 var help = flag.BoolP("help", "h", false, "Show this page")
+var noload = flag.BoolP("noload", "n", false, "Don't load unfinished sequences from store")
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -36,7 +37,7 @@ func main() {
 
 	log.Info().Msg("Starting Manopus...")
 
-	cfg, sequencerInstance, httpServer := config.InitConfig(ctx, configFiles)
+	cfg, sequencerInstance, httpServer := config.InitConfig(ctx, configFiles, *noload)
 	if cfg == nil || sequencerInstance == nil {
 		log.Fatal().Msg("No configuration provided")
 	}
@@ -47,6 +48,7 @@ func showUsage() {
 	println("Usage: " + os.Args[0] + " [options] [config files or dirs]...")
 	println("Starts Manopus omnichannel automation bot\n")
 	println("Options and flags:")
+	println("  -n, --noload: Don't load unfinished sequences from store")
 	println("  -h, --help: Show this page")
 }
 
