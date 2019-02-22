@@ -21,7 +21,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	ctx = l.WithContext(ctx)
 	l.Debug().Msgf("Initializing new instance of %s", connectorName)
 	i := new(HTTP)
-	i.created = time.Now().UnixNano()
+	i.created = time.Now().UTC().UnixNano()
 	i.name = name
 	if i.validate() != nil {
 		l.Fatal().Msg("Cannot validate parameters of connector")

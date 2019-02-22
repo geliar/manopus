@@ -3,7 +3,7 @@ package boltdb
 import (
 	"context"
 
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/geliar/manopus/pkg/log"
 	"github.com/geliar/manopus/pkg/store"

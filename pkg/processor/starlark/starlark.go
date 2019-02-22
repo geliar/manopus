@@ -25,7 +25,7 @@ import (
 
 func init() {
 	processor.Register(log.Logger.WithContext(context.Background()), new(Starlark))
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UTC().UnixNano())
 	resolve.AllowGlobalReassign = true
 }
 

@@ -78,13 +78,13 @@ func (c *Timer) Send(ctx context.Context, response *payload.Response) map[string
 				ID:    id,
 				Data: map[string]interface{}{
 					"timer_id": id,
-					"now":      time.Now().Unix(),
+					"now":      time.Now().UTC().Unix(),
 				},
 			})
 		})
 		return map[string]interface{}{
 			"timer_id": id,
-			"now":      time.Now().Unix(),
+			"now":      time.Now().UTC().Unix(),
 		}
 	}
 	return nil

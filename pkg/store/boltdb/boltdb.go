@@ -3,7 +3,7 @@ package boltdb
 import (
 	"context"
 
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 type BoltDB struct {
@@ -48,5 +48,5 @@ func (s *BoltDB) Load(ctx context.Context, key string) (value []byte, err error)
 }
 
 func (s *BoltDB) Stop(ctx context.Context) {
-
+	_ = s.db.Close()
 }

@@ -21,7 +21,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	ctx = l.WithContext(ctx)
 	l.Debug().Msgf("Initializing new instance of %s", connectorName)
 	i := new(Timer)
-	i.created = time.Now().UnixNano()
+	i.created = time.Now().UTC().UnixNano()
 	i.name = name
 	i.stopCh = make(chan struct{})
 	if config != nil {

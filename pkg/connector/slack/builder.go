@@ -36,7 +36,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	ctx = l.WithContext(ctx)
 	l.Debug().Msgf("Initializing new instance of %s", connectorName)
 	i := new(SlackRTM)
-	i.created = time.Now().UnixNano()
+	i.created = time.Now().UTC().UnixNano()
 	i.name = name
 	i.config.debug, _ = config["debug"].(bool)
 	i.config.rtm, _ = config["rtm"].(bool)

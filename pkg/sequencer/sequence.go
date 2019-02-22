@@ -11,6 +11,7 @@ import (
 )
 
 type Sequence struct {
+	id             string
 	sequenceConfig SequenceConfig
 	step           int
 	event          *payload.Event
@@ -53,7 +54,7 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 	}
 	*(s.payload) = newPayload
 	s.event = event
-	s.latestMatch = time.Now()
+	s.latestMatch = time.Now().UTC()
 	return true
 }
 
@@ -85,7 +86,7 @@ func (s *Sequence) Run(ctx context.Context, processorName string) (next processo
 		}
 		next, callback, responses, _ = processor.Run(runCtx, processorName, step.Script, s.event, &newPayload)
 		*(s.payload) = newPayload
-		s.latestMatch = time.Now()
+		s.latestMatch = time.Now().UTC()
 		return
 	}
 	l.Warn().Msg("script field is empty for the step, there is nothing to execute")
@@ -97,7 +98,7 @@ func (s *Sequence) TimedOut(ctx context.Context) bool {
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).
 		Int("sequence_step", s.step).Logger()
-	if s.sequenceConfig.Steps[s.step].Timeout > 0 && time.Now().After(s.latestMatch.Add(time.Duration(s.sequenceConfig.Steps[s.step].Timeout)*time.Second)) {
+	if s.sequenceConfig.Steps[s.step].Timeout > 0 && time.Now().UTC().After(s.latestMatch.Add(time.Duration(s.sequenceConfig.Steps[s.step].Timeout)*time.Second)) {
 		l.Debug().Msg("Timed out")
 		return true
 	}

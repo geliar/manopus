@@ -21,7 +21,7 @@ func TestSlack(t *testing.T) {
 	ctx := l.WithContext(context.Background())
 	i := new(SlackRTM)
 	t.Run("Connect", func(t *testing.T) {
-		i.created = time.Now().UnixNano()
+		i.created = time.Now().UTC().UnixNano()
 
 		i.name = "test"
 		i.config.debug = false

@@ -3,8 +3,10 @@ package sequencer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/payload"
@@ -28,12 +30,15 @@ type Sequencer struct {
 	queue           sequenceStack
 	stop            bool
 	sync.RWMutex
-	running int64
-	mainCtx context.Context
+	running          int64
+	sequenceCounter  uint64
+	sequenceIDPrefix string
+	mainCtx          context.Context
 }
 
 func (s *Sequencer) Init(ctx context.Context, noload bool) {
 	s.mainCtx = ctx
+	s.sequenceIDPrefix = time.Now().UTC().Format("20060102150405")
 	if s.Store != "" && s.StoreKey != "" {
 		_ = s.load(ctx)
 	}
@@ -48,6 +53,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		Str("event_type", event.Type).
 		Str("event_id", event.ID).
 		Logger()
+	ctx = l.WithContext(ctx)
 	s.RLock()
 	defer s.RUnlock()
 	if s.stop {
@@ -70,6 +76,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		l = l.With().
 			Str("sequence_name", seq.sequenceConfig.Name).
 			Int("sequence_step", seq.step).
+			Str("sequence_id", seq.id).
 			Logger()
 		ctx = l.WithContext(ctx)
 		l.Debug().
@@ -126,6 +133,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 			l.Debug().Msg("Sequence is finished. Creating new one.")
 		}
 	}
+	_ = s.save(ctx)
 	return
 }
 
@@ -139,6 +147,11 @@ func (s *Sequencer) Stop(ctx context.Context) {
 	s.Lock()
 	defer s.Unlock()
 	_ = s.save(ctx)
+}
+
+func (s *Sequencer) newID() string {
+	c := atomic.AddUint64(&s.sequenceCounter, 1)
+	return fmt.Sprintf("%s-%010d", s.sequenceIDPrefix, c)
 }
 
 func (s *Sequencer) load(ctx context.Context) error {
@@ -196,6 +209,7 @@ func (s *Sequencer) sendToOutput(ctx context.Context, response *payload.Response
 
 func (s *Sequencer) pushnew(sc SequenceConfig) {
 	seq := &Sequence{
+		id:             s.newID(),
 		sequenceConfig: sc,
 		payload:        &payload.Payload{Env: s.Env},
 		step:           0,
