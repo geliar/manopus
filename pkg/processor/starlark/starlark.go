@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geliar/manopus/pkg/output"
-
 	sljson "github.com/DLag/starlark-modules/json"
 	slrandom "github.com/DLag/starlark-modules/random"
 	"github.com/DLag/starlight/convert"
@@ -19,8 +17,10 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/geliar/manopus/pkg/log"
+	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/payload"
 	"github.com/geliar/manopus/pkg/processor"
+	"github.com/geliar/manopus/pkg/report"
 )
 
 func init() {
@@ -36,11 +36,11 @@ func (p *Starlark) Type() string {
 	return serviceName
 }
 
-func (p *Starlark) Run(ctx context.Context, rawScript interface{}, event *payload.Event, payload *payload.Payload) (next processor.NextStatus, callback interface{}, responses []payload.Response, err error) {
+func (p *Starlark) Run(ctx context.Context, reporter report.Driver, rawScript interface{}, event *payload.Event, payload *payload.Payload) (next processor.NextStatus, callback interface{}, responses []payload.Response, err error) {
 	next = processor.NextContinue
 	script := p.collectScript(ctx, rawScript)
 	var result *bool
-	result, callback, responses, err = p.run(ctx, script, event, payload)
+	result, callback, responses, err = p.run(ctx, reporter, script, event, payload)
 	if result == nil && err == nil {
 		next = processor.NextContinue
 		return
@@ -60,11 +60,18 @@ func (p Starlark) Match(ctx context.Context, rawMatch interface{}, payload *payl
 	return
 }
 
-func (p Starlark) run(ctx context.Context, script string, event *payload.Event, pl *payload.Payload) (result *bool, respond interface{}, responses []payload.Response, err error) {
+func (p Starlark) run(ctx context.Context, reporter report.Driver, script string, event *payload.Event, pl *payload.Payload) (result *bool, respond interface{}, responses []payload.Response, err error) {
 	l := logger(ctx)
 	l.Debug().Str("script", script).
 		Msg("Executing script")
 	globals := p.makeGlobals(ctx, pl)
+	globals["report"] = func(v string) {
+		log.Debug().
+			Str("starlark_function", "report").
+			Str("param-v", v).
+			Msg("Called function")
+		reporter.PushString(ctx, v)
+	}
 	globals["respond"] = func(response interface{}) {
 		l.Debug().
 			Str("starlark_function", "respond").

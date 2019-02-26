@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/geliar/manopus/pkg/processor"
-
 	"github.com/geliar/manopus/pkg/payload"
+	"github.com/geliar/manopus/pkg/processor"
+	"github.com/geliar/manopus/pkg/report"
 )
 
 type Sequence struct {
@@ -58,7 +58,7 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 	return true
 }
 
-func (s *Sequence) Run(ctx context.Context, processorName string) (next processor.NextStatus, callback interface{}, responses []payload.Response) {
+func (s *Sequence) Run(ctx context.Context, reporter report.Driver, processorName string) (next processor.NextStatus, callback interface{}, responses []payload.Response) {
 	l := logger(ctx)
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).
@@ -84,7 +84,7 @@ func (s *Sequence) Run(ctx context.Context, processorName string) (next processo
 		if newPayload.Export == nil {
 			newPayload.Export = make(map[string]interface{})
 		}
-		next, callback, responses, _ = processor.Run(runCtx, processorName, step.Script, s.event, &newPayload)
+		next, callback, responses, _ = processor.Run(runCtx, reporter, processorName, step.Script, s.event, &newPayload)
 		*(s.payload) = newPayload
 		s.latestMatch = time.Now().UTC()
 		return

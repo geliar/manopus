@@ -11,4 +11,7 @@ import (
 
 	//Stores
 	_ "github.com/geliar/manopus/pkg/store/boltdb"
+
+	//Reporters
+	_ "github.com/geliar/manopus/pkg/report/fs"
 )

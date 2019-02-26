@@ -11,6 +11,7 @@ import (
 	"github.com/geliar/manopus/pkg/http"
 	"github.com/geliar/manopus/pkg/input"
 	"github.com/geliar/manopus/pkg/log"
+	"github.com/geliar/manopus/pkg/report"
 	"github.com/geliar/manopus/pkg/sequencer"
 	"github.com/geliar/manopus/pkg/store"
 
@@ -31,6 +32,8 @@ type Config struct {
 	Connectors map[string]connector.Config `yaml:"connectors"`
 	//Sequencer config
 	Sequencer sequencer.Sequencer `yaml:"sequencer"`
+	//Report config
+	Report report.Config
 	//HTTP server config
 	HTTP http.HTTPConfig
 }
@@ -82,6 +85,9 @@ func InitConfig(ctx context.Context, configs []string, noload bool) (*Config, *s
 	for i := range c.Stores {
 		store.ConfigureStore(ctx, i, c.Stores[i])
 	}
+
+	//Report
+	report.Init(ctx, c.Report)
 
 	//Sequencer
 	c.Sequencer.Init(ctx, noload)

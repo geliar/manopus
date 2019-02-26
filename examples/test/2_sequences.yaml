@@ -152,11 +152,16 @@ sequencer:
           match: req['ticker_id'] != ''
           script: |
             debug('Ticker tick')
-    - name: request debug sequence
+    - name: slack debug sequence
       steps:
         - name: debug
           match: "(req['direct'] or req['mentioned']) and match_re(req['message'], '(@.* )?Debug$')"
           script: "respond(json.dump({'req': req, 'env': env}))"
+    - name: slack report sequence
+      steps:
+        - name: report
+          match: "(req['direct'] or req['mentioned']) and match_re(req['message'], '(@.* )?Report: (?P<report>.*)')"
+          script: "report(match['report'])"
     - name: Debug HTTP
       steps:
         - inputs:

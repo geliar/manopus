@@ -1,0 +1,4 @@
+report:
+  driver: fs
+  config:
+    path: ./report

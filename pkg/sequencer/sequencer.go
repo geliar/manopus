@@ -11,6 +11,7 @@ import (
 	"github.com/geliar/manopus/pkg/output"
 	"github.com/geliar/manopus/pkg/payload"
 	"github.com/geliar/manopus/pkg/processor"
+	"github.com/geliar/manopus/pkg/report"
 	"github.com/geliar/manopus/pkg/store"
 )
 
@@ -86,10 +87,11 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 			s.pushnew(seq.sequenceConfig)
 		}
 		var next processor.NextStatus
-
+		reporter := report.Open(ctx, seq.id, seq.step)
 		// Running specified processor
-		next, callback, responses := seq.Run(ctx, s.Processor)
+		next, callback, responses := seq.Run(ctx, reporter, s.Processor)
 
+		reporter.Close(ctx)
 		if callback != nil {
 			if response != nil {
 				l.Warn().Msg("Multiple sequences returned callback data. Using the latest one.")
@@ -182,7 +184,7 @@ func (s *Sequencer) load(ctx context.Context) error {
 
 func (s *Sequencer) save(ctx context.Context) error {
 	l := logger(ctx)
-	l.Info().Msg("Saving unfinished sequences to store")
+	l.Debug().Msg("Saving unfinished sequences to store")
 	var tmp struct {
 		Store *sequenceStack
 	}

@@ -109,7 +109,8 @@ func (s *sequenceStack) push(sequence *Sequence) {
 func (s *sequenceStack) exists(sequence *Sequence) bool {
 	elem := s.first
 	for elem != nil {
-		if reflect.DeepEqual(*elem.sequence, *sequence) {
+		if reflect.DeepEqual(elem.sequence.sequenceConfig, sequence.sequenceConfig) &&
+			elem.sequence.step == sequence.step {
 			return true
 		}
 		elem = elem.next

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/geliar/manopus/pkg/payload"
+	"github.com/geliar/manopus/pkg/report"
 )
 
 type catalogStore struct {
@@ -18,8 +19,8 @@ func Register(ctx context.Context, processor Processor) {
 	catalog.register(ctx, processor)
 }
 
-func Run(ctx context.Context, name string, script interface{}, event *payload.Event, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error) {
-	return catalog.run(ctx, name, script, event, payload)
+func Run(ctx context.Context, reporter report.Driver, name string, script interface{}, event *payload.Event, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error) {
+	return catalog.run(ctx, reporter, name, script, event, payload)
 }
 
 func Match(ctx context.Context, name string, match interface{}, payload *payload.Payload) (matched bool, err error) {
@@ -47,7 +48,7 @@ func (c *catalogStore) register(ctx context.Context, processor Processor) {
 		Msg("Registered new processor")
 }
 
-func (c *catalogStore) run(ctx context.Context, name string, script interface{}, event *payload.Event, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error) {
+func (c *catalogStore) run(ctx context.Context, reporter report.Driver, name string, script interface{}, event *payload.Event, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error) {
 	c.RLock()
 
 	l := logger(ctx)
@@ -60,7 +61,7 @@ func (c *catalogStore) run(ctx context.Context, name string, script interface{},
 	}
 	p := c.processors[name]
 	c.RUnlock()
-	return p.Run(ctx, script, event, payload)
+	return p.Run(ctx, reporter, script, event, payload)
 }
 
 func (c *catalogStore) match(ctx context.Context, name string, match interface{}, payload *payload.Payload) (matched bool, err error) {
