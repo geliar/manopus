@@ -13,18 +13,18 @@ sequencer:
     - name: greating sequence # Name of the sequence for logs (optional)
       steps: # List of the sequence steps
         - name: ask for name # Name of the step for logs (optional)
-          match: (req['direct'] or req['mentioned']) and match_re(req['message'], '(Hi|hi|Hello|hello)')
+          match: (req.direct or req.mentioned) and match_re(req.message, '(Hi|hi|Hello|hello)')
           script:
-            - respond('Hi <@{}>, what is your name?'.format(req['user_id'])) #send plain response back to connector
-            - export["chat_user"] = req['user_id'] #export dict will be copied to next step
+            - respond('Hi <@{}>, what is your name?'.format(req.user_id)) #send plain response back to connector
+            - export["chat_user"] = req.user_id #export dict will be copied to next step
         - name: greeting
           timeout: 60 # Timeout for this step in seconds. Sequence will be reset if no matched events until timeout
-          match: (req['direct'] or req['mentioned']) and req['user_id'] == export['chat_user'] and match_re(req['message'], '(My|my) name is (?P<name>[A-Za-z]+)')
+          match: (req.direct or req.mentioned) and req.user_id == export['chat_user'] and match_re(req.message, '(My|my) name is (?P<name>[A-Za-z]+)')
           script: respond('{} {}'.format(env['response'], match['name']))
     - name: voting
       steps:
         - name: start
-          match: "match_re(req['message'], '^(<@.*> )?Vote: (?P<msg>.*)')"
+          match: "match_re(req.message, '^(<@.*> )?Vote: (?P<msg>.*)')"
           vars:
             response:
               attachments:
@@ -46,8 +46,8 @@ sequencer:
               data: ""
           script: |
             vars['response']['attachments'][0]['callback_id'] = vars['response']['attachments'][0]['callback_id']+str(random.randint(0, 10000))
-            vars['response']['data'] = 'Voting by <@{}>: {}'.format(req['user_id'], match['msg'])
-            vars['response']['channel_id'] = req['channel_id']
+            vars['response']['data'] = 'Voting by <@{}>: {}'.format(req.user_id, match['msg'])
+            vars['response']['channel_id'] = req.channel_id
             call('slack', vars["response"])
             export['yes'] = 0
             export['no'] = 0
@@ -55,28 +55,28 @@ sequencer:
             export['users'] = list()
             export['msg'] = match['msg']
         - name: voting
-          match: req['callback_id'] == export['callback_id'] and ((req['action_value'] in ('yes', 'no') and req['user_id'] not in export['users']) or req['action_value'] == 'stop')
+          match: req.callback_id == export['callback_id'] and ((req.actions[0].value in ('yes', 'no') and req.user_id not in export['users']) or req.actions[0].value == 'stop')
           script: |
-            export['users'].append(req['user_id'])
-            if req['action_value'] == 'yes':
+            export['users'].append(req.user_id)
+            if req.actions[0].value == 'yes':
               export['yes']+=1
               repeat()
-            if req['action_value'] == 'no':
+            if req.actions[0].value == 'no':
               export['no']+=1
               repeat()
-            if req['action_value'] == 'stop':
+            if req.actions[0].value == 'stop':
               if export['yes']>export['no']:
                 result = 'Yes'
               else:
                 result = 'No'
               if export['yes']==export['no']:
                 result = 'Draw'
-              respond('Voting has been stopped by <@{}>\nResult is *{}*: Yes({}), No({})'.format(req['user_id'], result, export['yes'], export['no']))
+              respond('Voting has been stopped by <@{}>\nResult is *{}*: Yes({}), No({})'.format(req.user_id, result, export['yes'], export['no']))
               stop()
     - name: approving sequence
       steps:
         - name: start
-          match: "match_re(req['message'], '^(<@.*> )?Approve: (?P<count>.*)')"
+          match: "match_re(req.message, '^(<@.*> )?Approve: (?P<count>.*)')"
           vars:
             response:
               user_name: *slack_user
@@ -97,33 +97,33 @@ sequencer:
             - vars['response']['attachments'][0]['callback_id']+=str(random.randint(0, 10000))
             - send('slack', vars["response"])
             - respond('Asking users for {} approves'.format(match['count']))
-            - export['channel_id'] = req['channel_id']
+            - export['channel_id'] = req.channel_id
             - export['count'] = int(match['count'])
             - export['callback_id'] = vars['response']['attachments'][0]['callback_id']
             - export['users'] = vars['response']['user_name']
         - name: approving
-          match: req['callback_id'] == export['callback_id'] and req['action_value'] == 'approve' and req['user_name'] in export['users']
+          match: req.callback_id == export['callback_id'] and req.actions[0].value == 'approve' and req.user_name in export['users']
           script: |
             export['count']-=1
             respond('Thank you!')
             if export['count'] > 0:
-              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! {} approve(s) left.'.format(req['user_id'], export['count'])})
+              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! {} approve(s) left.'.format(req.user_id, export['count'])})
               repeat()
             else:
-              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! Action approved!'.format(req['user_id'], export['count'])})
+              send('slack', {'channel_id': export['channel_id'], 'data': 'Approved by <@{}>! Action approved!'.format(req.user_id, export['count'])})
     - name: repeating sequence
       steps:
         - name: repeat
-          match: "match_re(req['message'], '^(@.* )?Repeat: (?P<msg>.*)')"
+          match: "match_re(req.message, '^(@.* )?Repeat: (?P<msg>.*)')"
           script: respond(match['msg'])
     - name: always direct response
       steps:
-        - match: "match_re(req['message'], '^(@.* )Direct: (?P<msg>.*)')"
-          script: "send('slack', {'data': match['msg'], 'user_id': req['user_id'])"
+        - match: "match_re(req.message, '^(@.* )Direct: (?P<msg>.*)')"
+          script: "send('slack', {'data': match['msg'], 'user_id': req.user_id)"
     - name: sleeping sequence
       steps:
       - name: sleep
-        match: req['direct'] and match_re(req['message'], '^sleep\((?P<duration>.*)\)')
+        match: req['direct'] and match_re(req.message, '^sleep\((?P<duration>.*)\)')
         max_execution_time: 60
         script:
               - sleep(int(match['duration'])*1000)
@@ -132,16 +132,16 @@ sequencer:
       single: true
       steps:
       - name: set timer
-        match: req['direct'] and match_re(req['message'], '^timer\((?P<duration>.*)\)')
+        match: req.direct and match_re(req.message, '^timer\((?P<duration>.*)\)')
         script: |
           d = call('timer', {'function': 'timer', 'duration': match['duration']})
           export['timer_id'] = d['timer_id']
           export['duration'] = match['duration']
-          export['channel_id'] = req['channel_id']
+          export['channel_id'] = req.channel_id
       - name: receive timer event
         inputs:
           - timer
-        match: req['timer_id'] == export['timer_id']
+        match: req.timer_id == export['timer_id']
         script: |
           call('slack', {'channel_id': export['channel_id'], 'data': 'Was sleeping for {} seconds'.format(match['duration'])})
     - name: ticker sequence
@@ -149,52 +149,59 @@ sequencer:
         - name: receive ticker event
           inputs:
             - timer
-          match: req['ticker_id'] != ''
+          match: req.ticker_id != ''
           script: |
             debug('Ticker tick')
     - name: slack debug sequence
       steps:
         - name: debug
-          match: "(req['direct'] or req['mentioned']) and match_re(req['message'], '(@.* )?Debug$')"
+          match: "(req.direct or req.mentioned) and match_re(req.message, '(@.* )?Debug$')"
           script: "respond(json.dump({'req': req, 'env': env}))"
     - name: slack report sequence
       steps:
         - name: report
-          match: "(req['direct'] or req['mentioned']) and match_re(req['message'], '(@.* )?Report: (?P<report>.*)')"
+          match: "(req.direct or req.mentioned) and match_re(req.message, '(@.* )?Report: (?P<report>.*)')"
           script: "report(match['report'])"
     - name: Debug HTTP
       steps:
         - inputs:
             - http
           script: |
-            debug(type(req['http_method']))
-            debug(req['http_method']=='POST')
+            debug(type(req.method))
+            debug(req.method=='POST')
     - name: HTTP request debug sequence
       steps:
         - name: http debug
           inputs:
             - http
-          match: match_re(req['http_uri'], '^/debug')
+          types:
+            - request
+            - json_request
+          match: match_re(req.uri, '^/debug')
           script: "respond(json.dump({'req': req, 'env': env}))"
     - name: Message from HTTP to Slack
       steps:
         - inputs:
             - http
-          match: match_re(req['http_path'], '^/message$') and type(var_get('req.http_form.message.0')) == 'string' and type(var_get('req.http_form.user.0')) == 'string'
+          types:
+            - request
+          match: match_re(req.path, '^/message$') and type(var_get('req.form.message.0')) == 'string' and type(var_get('req.form.user.0')) == 'string'
           script: |
-            send('slack', {'user_name': var_get('req.http_form.user.0'), 'data': var_get('req.http_form.message.0')})
-            respond('Sent "{}" to {}'.format(var_get('req.http_form.message.0'), var_get('req.http_form.user.0'))
+            send('slack', {'user_name': var_get('req.form.user.0'), 'data': var_get('req.form.message.0')})
+            respond('Sent "{}" to {}'.format(var_get('req.form.message.0'), var_get('req.form.user.0')))
     - name: Message from JSON HTTP to Slack
       steps:
         - inputs:
             - http
-          match: req['http_method'] == 'POST' and match_re(req['http_path'], '^/message-json$')
+          types:
+            - json_request
+          match: req.method == 'POST' and match_re(req.path, '^/message-json$')
           script: |
-            send('slack', {'user_name': var_get('req.http_json.user'), 'data': var_get('req.http_json.message')})
-            respond('Sent "{}" to {}'.format(var_get('req.http_json.message'), var_get('req.http_json.user')))
+            send('slack', {'user_name': var_get('req.json.user'), 'data': var_get('req.json.message')})
+            respond('Sent "{}" to {}'.format(var_get('req.json.message'), var_get('req.json.user')))
     - name: Debug in JSON
       steps:
         - inputs:
           - http
-          match: match_re(req['http_uri'], '^/json')
+          match: match_re(req.uri, '^/json')
           script: "respond(json.dump({'req': req, 'env': env'}))"

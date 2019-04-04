@@ -26,12 +26,21 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 		Int("sequence_step", s.step).Logger()
 	ctx = l.WithContext(ctx)
 	step := &s.sequenceConfig.Steps[s.step]
+
 	if len(step.Inputs) > 0 {
 		if !contains(step.Inputs, event.Input) {
 			return false
 		}
-	} else {
-		if !contains(inputs, event.Input) {
+	} else if len(s.sequenceConfig.Inputs) > 0 {
+		if !contains(s.sequenceConfig.Inputs, event.Input) {
+			return false
+		}
+	} else if !contains(inputs, event.Input) {
+		return false
+	}
+
+	if len(step.Types) > 0 {
+		if !contains(step.Types, event.Type) {
 			return false
 		}
 	}
@@ -39,6 +48,9 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 	newPayload := *(s.payload)
 	newPayload.Vars = step.Vars
 	newPayload.Req = event.Data
+	newPayload.Event = new(payload.EventInfo)
+	newPayload.Event.Type = event.Type
+	newPayload.Event.Input = event.Input
 	if step.Match != nil {
 		if s.sequenceConfig.Processor != "" {
 			processorName = s.sequenceConfig.Processor
@@ -109,12 +121,14 @@ func (s *Sequence) MarshalJSON() ([]byte, error) {
 	compat := struct {
 		SequenceConfig SequenceConfig
 		Step           int
+		ID             string
 		Env            map[string]interface{}
 		Export         map[string]interface{}
 		LatestMatch    int64
 	}{
 		SequenceConfig: s.sequenceConfig,
 		Step:           s.step,
+		ID:             s.id,
 		Env:            s.payload.Env,
 		Export:         s.payload.Export,
 		LatestMatch:    s.latestMatch.Unix(),
@@ -126,6 +140,7 @@ func (s *Sequence) UnmarshalJSON(buf []byte) (err error) {
 	compat := struct {
 		SequenceConfig SequenceConfig
 		Step           int
+		ID             string
 		Env            map[string]interface{}
 		Export         map[string]interface{}
 		LatestMatch    int64
@@ -140,6 +155,7 @@ func (s *Sequence) UnmarshalJSON(buf []byte) (err error) {
 	s.payload.Env = compat.Env
 	s.payload.Export = compat.Export
 	s.latestMatch = time.Unix(compat.LatestMatch, 0)
+	s.id = compat.ID
 	return
 }
 

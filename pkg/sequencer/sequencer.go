@@ -40,7 +40,7 @@ type Sequencer struct {
 func (s *Sequencer) Init(ctx context.Context, noload bool) {
 	s.mainCtx = ctx
 	s.sequenceIDPrefix = time.Now().UTC().Format("20060102150405")
-	if s.Store != "" && s.StoreKey != "" {
+	if s.Store != "" && s.StoreKey != "" && !noload {
 		_ = s.load(ctx)
 	}
 	for _, sc := range s.SequenceConfigs {
@@ -124,6 +124,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 			}
 			//Cleanup
 			seq.payload.Req = nil
+			seq.payload.Event = nil
 			seq.payload.Resp = nil
 			//Pushing sequence back to queue
 			s.queue.Push(seq)

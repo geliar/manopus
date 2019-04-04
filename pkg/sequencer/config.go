@@ -10,6 +10,8 @@ type SequenceConfig struct {
 	Steps []StepConfig `yaml:"steps" json:"steps"`
 	//Processor name of processor to run the script
 	Processor string `yaml:"processor" json:"processor"`
+	//Inputs list of the inputs
+	Inputs []string `yaml:"inputs" json:"inputs"`
 }
 
 // StepConfig contains description of the sequence step
@@ -18,6 +20,8 @@ type StepConfig struct {
 	Name string `yaml:"name" json:"name"`
 	//Inputs list of inputs to match
 	Inputs []string `yaml:"inputs" json:"inputs"`
+	//Types list of event types to match
+	Types []string `yaml:"types" json:"types"`
 	//Vars list of variables to be added to payload vars field
 	Vars map[string]interface{} `yaml:"vars" json:"vars"`
 	//Match contains matcher script

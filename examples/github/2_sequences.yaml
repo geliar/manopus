@@ -1,0 +1,123 @@
+sequencer:
+  inputs:
+    - slack
+  store: sequencer
+  store_key: sequencer_key
+  processor: starlark
+  env:
+    usermap:
+      USER: user
+    approvers:
+      qa:
+        Team Lead:
+        - user
+      stage:
+        QA Team:
+        - user
+      master:
+        QA Team:
+        - user
+        Product Team:
+        - user
+    approve_message:
+      user_name:
+      attachments:
+        - callback_id: "approve_sequence_"
+          attachment_type: "default"
+          actions:
+            - name: Approve
+              text: "Approve"
+              type: button
+              value: approve
+            - name: Decline
+              text: "Decline"
+              type: button
+              value: decline
+      data:
+    build_branches:
+      master: manopus-prod
+      stage: manopus-stage
+      qa: manopus-qa
+  sequences:
+    - name: Approve and Merge
+      steps:
+        - name: ask
+          inputs:
+            - github
+          type: pull_request
+          match: "req.action == 'opened' and req.pull_request.base.ref in env['approvers']"
+          vars:
+          script: |
+            system(['echo', 'exec 1'])
+            if req.pull_request.user.login in env['usermap']:
+              export['pr_user'] = env['usermap'][req.pull_request.user.login]
+              pr_user = '<@{}>'.format(env['usermap'][req.pull_request.user.login])
+              debug(pr_user)
+            else:
+              pr_user = req.pull_request.user.login
+              export['pr_user'] = ''
+            approvers = env['approvers'][req.pull_request.base.ref]
+            export['repo_owner'] = req.pull_request.base.repo.owner.login
+            export['repo_name'] = req.repository.name
+            export['issue_number'] = req.issue.number
+            export['pr_number'] = req.pull_request.number
+            export['callbacks'] = {}
+            export['approvers_list'] = {}
+            for team in env['approvers'][req.pull_request.base.ref]:
+              message = env['approve_message']
+              message['attachments'][0]['callback_id']+=str(random.randint(0, 10000))
+              message['data'] = 'User {} created Pull Request.\nAs a member of *{}* team please review it then aproove or decline.\nURL: {}'.format(pr_user, team, req.pull_request.html_url)
+              message['user_name'] = approvers[team]
+              export['callbacks'][message['attachments'][0]['callback_id']]=team
+              send('slack', message)
+              export['approvers_list'][message['attachments'][0]['callback_id']]=team
+        - name: reaction
+          inputs:
+            - slack
+          types:
+            - interaction
+          match: "req.callback_id in export['callbacks']"
+          vars:
+          script: |
+            key = req.callback_id
+            team = export['callbacks'][key]
+            export['approvers_list'].pop(key)
+            message = {'user_name': export['pr_user']}
+            message['data'] = '<@{}> from *{}* has approved your PR.'.format(req.user_name, team)
+            send('slack', message)
+            comment = {'repo_owner': export['repo_owner'], 'repo_name': export['repo_name'], 'issue_number': export['issue_number']}
+            comment['function'] = 'issue_comment'
+            github_name = req.user_name
+            for u in env['usermap']:
+              if env['usermap'][u]==req.user_name:
+                github_name = '@'+u
+                break
+            comment['message'] = "Approved in Slack by {} from {}".format(github_name, team)
+            call('github', comment)
+            if len(export['approvers_list']) > 0:
+              repeat()
+            else:
+              message['data'] = 'Pull request has been approved'
+              send('slack', message)
+              pr = {'repo_owner': export['repo_owner'], 'repo_name': export['repo_name'], 'pr_number': export['pr_number']}
+              pr['merge_message'] = 'Merged from Manopus'
+              pr['function'] = 'pull_request_merge'
+              call('github', pr)
+    - name: Build and Deploy
+      steps:
+        - name: start
+          inputs:
+            - github
+          types:
+            - push
+          match: "req.branch in env['build_branches']"
+          vars:
+          script: |
+            s3 = env['build_branches'][req.branch]
+            message = {}
+            message['channel_name'] = "channel"
+            message['data'] = 'Got push to {} branch {}. Building to {}.s3-website-{}.amazonaws.com'.format(req['repo_name'], req['push_branch'], 'eu-west2')
+            send('slack', message)
+            system(['git', 'clone', req.repository.cloneurl', '.']])
+            system(['git', 'checkout', req.branch])
+            system(['aws', 's3', 'rb', 's3://{}'.format(s3), '--region', 'eu-west1', '--force'])

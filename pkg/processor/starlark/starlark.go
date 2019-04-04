@@ -8,9 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geliar/manopus/pkg/exec"
+
+	"github.com/DLag/starlark-modules/convert"
 	sljson "github.com/DLag/starlark-modules/json"
 	slrandom "github.com/DLag/starlark-modules/random"
-	"github.com/DLag/starlight/convert"
+	sconvert "github.com/DLag/starlight/convert"
 	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
@@ -27,6 +30,7 @@ func init() {
 	processor.Register(log.Logger.WithContext(context.Background()), new(Starlark))
 	rand.Seed(time.Now().UTC().UnixNano())
 	resolve.AllowGlobalReassign = true
+	convert.StructTags = append(convert.StructTags, "json")
 }
 
 type Starlark struct {
@@ -90,11 +94,11 @@ func (p Starlark) run(ctx context.Context, reporter report.Driver, script string
 			return starlark.None, errors.New("wrong args, should be send(string, dict).")
 		}
 		outputName := args.Index(0).(starlark.String).GoString()
-		response := convert.FromDict(args.Index(1).(*starlark.Dict))
+		response := sconvert.FromDict(args.Index(1).(*starlark.Dict))
 		l.Debug().
 			Str("output_name", outputName).
 			Msg("Received response from script")
-		converted := convertToStringMap(response).(map[string]interface{})
+		converted := convert.ConvertToStringMap(response).(map[string]interface{})
 		responses = append(responses, payload.Response{Output: outputName, Data: converted})
 		return starlark.None, nil
 	})
@@ -105,21 +109,44 @@ func (p Starlark) run(ctx context.Context, reporter report.Driver, script string
 			return starlark.None, errors.New("wrong args, should be call(string, dict).")
 		}
 		outputName := args.Index(0).(starlark.String).GoString()
-		response := convert.FromDict(args.Index(1).(*starlark.Dict))
+		response := sconvert.FromDict(args.Index(1).(*starlark.Dict))
 		l.Debug().
 			Str("output_name", outputName).
 			Msg("Received call request from script")
-		converted := convertToStringMap(response).(map[string]interface{})
+		converted := convert.ConvertToStringMap(response).(map[string]interface{})
 		res := output.Send(ctx, &payload.Response{ID: event.ID, Output: outputName, Data: converted, Request: event})
 		if res == nil {
 			return starlark.None, nil
 		}
-		v, err := toValue(res)
+		v, err := convert.ToValue(res)
 		if err != nil {
 			l.Error().Err(err).Msg("Cannot convert output response to Starlark value")
 			return starlark.None, err
 		}
 		return v, nil
+	})
+	globals["system"] = starlark.NewBuiltin("system", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		l := l.With().Str("starlark_function", "system").Logger()
+		if args.Len() != 1 || args.Index(0).Type() != "list" {
+			l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be system(list).")
+			return starlark.None, errors.New("wrong args, should be system(list).")
+		}
+		cmd := sconvert.FromList(args.Index(0).(*starlark.List))
+		var cmdStr []string
+		for i := range cmd {
+			cmdStr = append(cmdStr, cmd[i].(string))
+		}
+		name := cmdStr[0]
+		cmdStr = cmdStr[1:]
+		l.Debug().Msg("Start execution of external command")
+		exit, stdout, stderr := exec.Exec(ctx, reporter, name, cmdStr...)
+		vexit, _ := convert.ToValue(exit)
+		vstdout, _ := convert.ToValue(stdout)
+		vstderr, _ := convert.ToValue(stderr)
+
+		var res starlark.Tuple
+		res = append(res, vexit, vstdout, vstderr)
+		return res, nil
 	})
 	globals["repeat"] = func() {
 		l.Debug().
@@ -135,7 +162,7 @@ func (p Starlark) run(ctx context.Context, reporter report.Driver, script string
 		r := false
 		result = &r
 	}
-	dict, err := convert.MakeStringDict(globals)
+	dict, err := sconvert.MakeStringDict(globals)
 	if err != nil {
 		l.Error().Err(err).Msg("Error converting payload to Starlark globals")
 		r := false
@@ -148,7 +175,7 @@ func (p Starlark) run(ctx context.Context, reporter report.Driver, script string
 		r := false
 		return &r, nil, nil, err
 	}
-	pl.Export = convertToStringMap(convert.FromDict(globals["export"].(*starlark.Dict))).(map[string]interface{})
+	pl.Export = convert.ConvertToStringMap(sconvert.FromDict(globals["export"].(*starlark.Dict))).(map[string]interface{})
 	if result != nil {
 		l.Debug().Msgf("Script execution result is %t", *result)
 	}
@@ -166,7 +193,7 @@ func (p Starlark) match(ctx context.Context, script string, pl *payload.Payload)
 			Msgf("Match script called matched with %t", b)
 		matched = b
 	}
-	dict, err := convert.MakeStringDict(globals)
+	dict, err := sconvert.MakeStringDict(globals)
 	if err != nil {
 		l.Error().
 			Err(err).
@@ -234,17 +261,23 @@ func (Starlark) soleExpr(f *syntax.File) syntax.Expr {
 
 func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map[string]interface{} {
 	l := logger(ctx)
-	env, _ := toValue(payload.Env)
-	vars, _ := toValue(payload.Vars)
-	req, _ := toValue(payload.Req)
-	export, _ := toValue(payload.Export)
-	match, _ := toValue(payload.Match)
+	env, err := convert.ToValue(payload.Env)
+	if err != nil {
+		l.Error().Err(err).Msg("Err")
+	}
+	vars, _ := convert.ToValue(payload.Vars)
+	req, _ := convert.ToValue(payload.Req)
+	export, _ := convert.ToValue(payload.Export)
+	match, _ := convert.ToValue(payload.Match)
+	event, _ := convert.ToValue(payload.Event)
+
 	return map[string]interface{}{
 		"env":    env,
 		"vars":   vars,
 		"req":    req,
 		"export": export,
 		"match":  match,
+		"event":  event,
 		"sleep": func(duration int) {
 			c := time.After(time.Duration(duration) * time.Millisecond)
 			select {
@@ -288,11 +321,11 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 			for i, m := range results {
 				if i != 0 && names[i] != "" {
 					payload.Match[names[i]] = m
-					sk, err := toValue(names[i])
+					sk, err := convert.ToValue(names[i])
 					if err != nil {
 						continue
 					}
-					sv, err := toValue(m)
+					sv, err := convert.ToValue(m)
 					if err != nil {
 						continue
 					}
@@ -311,7 +344,7 @@ func (p Starlark) makeGlobals(ctx context.Context, payload *payload.Payload) map
 			l.Debug().
 				Str("param-query", query).
 				Msg("Called function")
-			v, err := toValue(payload.QueryField(ctx, query))
+			v, err := convert.ToValue(payload.QueryField(ctx, query))
 			if err != nil {
 				l.Error().Msg("Error converting received value")
 				return starlark.None, errors.New("error converting received value")

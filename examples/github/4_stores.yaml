@@ -1,0 +1,6 @@
+stores:
+  sequencer:
+    type: boltdb
+    config:
+      file: /tmp/sequencer-cd.boltdb
+      bucket: sequencer

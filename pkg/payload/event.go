@@ -4,7 +4,7 @@ type Event struct {
 	Input string
 	Type  string
 	ID    string
-	Data  map[string]interface{}
+	Data  interface{}
 }
 
 type Response struct {

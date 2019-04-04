@@ -73,12 +73,15 @@ func (c *Timer) Send(ctx context.Context, response *payload.Response) map[string
 		id := c.getID()
 		dur := time.Duration(d) * time.Second
 		time.AfterFunc(dur, func() {
+			data, _ := response.Data["data"].(map[string]interface{})
 			c.sendEventToHandlers(ctx, &payload.Event{
-				Input: serviceName,
+				Input: c.name,
+				Type:  RequestTypeTimer,
 				ID:    id,
-				Data: map[string]interface{}{
-					"timer_id": id,
-					"now":      time.Now().UTC().Unix(),
+				Data: RequestTimer{
+					TimerID: id,
+					Now:     time.Now().UTC().Unix(),
+					Data:    data,
 				},
 			})
 		})
@@ -132,11 +135,12 @@ func (c *Timer) ticker(ctx context.Context, duration time.Duration) {
 		case now := <-t.C:
 			id := c.getID()
 			c.sendEventToHandlers(ctx, &payload.Event{
-				Input: serviceName,
+				Input: c.name,
+				Type:  RequestTypeTicker,
 				ID:    id,
-				Data: map[string]interface{}{
-					"ticker_id": id,
-					"now":       now.Unix(),
+				Data: RequestTicker{
+					TickerID: id,
+					Now:      now.UTC().Unix(),
 				},
 			})
 		}

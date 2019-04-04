@@ -58,7 +58,7 @@ func (d *FS) PushReader(ctx context.Context, report io.Reader) {
 		return
 	}
 	d.reports = append(d.reports, new(bytes.Buffer))
-	i := len(d.reports)
+	i := len(d.reports) - 1
 	go func() {
 		d.finished.RLock()
 		defer d.finished.RUnlock()

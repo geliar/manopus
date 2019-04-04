@@ -10,12 +10,18 @@ import (
 )
 
 type Payload struct {
+	Event  *EventInfo             `yaml:"event" json:"event"`
 	Env    map[string]interface{} `yaml:"env" json:"env"`
 	Vars   map[string]interface{} `yaml:"vars" json:"vars"`
-	Req    map[string]interface{} `yaml:"req" json:"req"`
+	Req    interface{}            `yaml:"req" json:"req"`
 	Resp   map[string]interface{} `yaml:"resp" json:"resp"`
 	Export map[string]interface{} `yaml:"export" json:"export"`
 	Match  map[string]interface{} `yaml:"match" json:"match"`
+}
+
+type EventInfo struct {
+	Input string `yaml:"input" json:"input"`
+	Type  string `yaml:"type" json:"type"`
 }
 
 func (p *Payload) ToJson(ctx context.Context) []byte {

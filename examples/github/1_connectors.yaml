@@ -11,15 +11,9 @@ connectors:
       message_types:
       event_callback: /slack/event
       interaction_callback: /slack/interaction
-  http:
-    type: http
-  timer:
-    type: timer
-    config:
-      ticker: 60 #Send tick event every 60 seconds
   github:
     type: github
     config:
-      oauth2_key: *github_oauth2_token
+      oauth2_token: *github_oauth2_token
       webhook_secret: *github_webhook_secret
       webhook_callback: /github

@@ -159,40 +159,40 @@ func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Req
 		l.Error().Msg("Wrong verification token")
 		return
 	}
-	e := &payload.Event{
-		Input: c.name,
-		Type:  connectorName,
-		ID:    c.getID(),
-		Data: map[string]interface{}{
-			"interaction":       true,
-			"user_id":           ev.User.ID,
-			"user_name":         c.getUserByID(ctx, ev.User.ID).Name,
-			"user_display_name": c.getUserByID(ctx, ev.User.ID).Name,
-			"user_real_name":    c.getUserByID(ctx, ev.User.ID).RealName,
-			"channel_id":        ev.Channel.ID,
-			"channel_name":      c.getChannelByID(ctx, ev.Channel.ID).Name,
-			"thread_ts":         ev.Message.ThreadTimestamp,
-			"ts":                ev.Message.Timestamp,
-			"message":           ev.Message.Text,
-			"direct":            strings.HasPrefix(ev.Channel.ID, "D"),
-			"callback_id":       ev.CallbackID,
-		},
-	}
-	var actions []map[string]interface{}
+	var actions []MessageAction
 	for i := range ev.Actions {
-		actions = append(actions, map[string]interface{}{
-			"name":  ev.Actions[i].Name,
-			"value": ev.Actions[i].Value,
-			"text":  ev.Actions[i].Text,
+		actions = append(actions, MessageAction{
+			Name:  ev.Actions[i].Name,
+			Value: ev.Actions[i].Value,
+			Text:  ev.Actions[i].Text,
 		})
 	}
-	if len(ev.Actions) == 1 {
-		e.Data["action_name"] = ev.Actions[0].Name
-		e.Data["action_value"] = ev.Actions[0].Value
-		e.Data["action_text"] = ev.Actions[0].Text
+
+	data := RequestInteraction{
+		SlackMessage: SlackMessage{
+			UserID:          ev.User.ID,
+			UserName:        c.getUserByID(ctx, ev.User.ID).Name,
+			UserDisplayName: c.getUserByID(ctx, ev.User.ID).Name,
+			UserRealName:    c.getUserByID(ctx, ev.User.ID).RealName,
+			ChannelID:       ev.Channel.ID,
+			ChannelName:     c.getChannelByID(ctx, ev.Channel.ID).Name,
+			ThreadTS:        ev.Message.ThreadTimestamp,
+			Timestamp:       ev.Message.Timestamp,
+			Message:         ev.Message.Text,
+			Direct:          strings.HasPrefix(ev.Channel.ID, "D"),
+		},
+		CallbackID: ev.CallbackID,
+		Actions:    actions,
 	}
-	e.Data["actions"] = actions
-	c.sendEventToHandlers(ctx, e)
+
+	e := &payload.Event{
+		Input: c.name,
+		Type:  RequestTypeInteraction,
+		ID:    c.getID(),
+		Data:  data,
+	}
+
+	c.sendEventToHandlers(ctx, ev.Channel.ID, e)
 }
 
 func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -226,34 +226,34 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 		eventData := eventsAPIEvent.Data.(*slackevents.EventsAPICallbackEvent)
 		innerEvent := eventsAPIEvent.InnerEvent
 		e := new(payload.Event)
+		var channel string
 		switch ev := innerEvent.Data.(type) {
 		case *slackevents.AppMentionEvent:
 			if ev.User == "" {
 				l.Debug().Msg("Message from bot itself, skipping")
 				return
 			}
+			channel = ev.Channel
+			data := RequestMessage{
+				SlackMessage: SlackMessage{
+					UserID:          ev.User,
+					UserName:        c.getUserByID(ctx, ev.User).Name,
+					UserDisplayName: c.getUserByID(ctx, ev.User).Name,
+					UserRealName:    c.getUserByID(ctx, ev.User).RealName,
+					ChannelID:       ev.Channel,
+					ChannelName:     c.getChannelByID(ctx, ev.Channel).Name,
+					ThreadTS:        ev.ThreadTimeStamp,
+					Timestamp:       ev.TimeStamp,
+					Message:         ev.Text,
+					Direct:          strings.HasPrefix(ev.Channel, "D"),
+				},
+				Mentioned: true,
+			}
 			e = &payload.Event{
 				Input: c.name,
-				Type:  connectorName,
+				Type:  RequestTypeMessage,
 				ID:    c.getID(),
-				Data: map[string]interface{}{
-					"user_id":           ev.User,
-					"user_name":         c.getUserByID(ctx, ev.User).Name,
-					"user_display_name": c.getUserByID(ctx, ev.User).Name,
-					"user_real_name":    c.getUserByID(ctx, ev.User).RealName,
-					"channel_id":        ev.Channel,
-					"channel_name":      c.getChannelByID(ctx, ev.Channel).Name,
-					"thread_ts":         ev.ThreadTimeStamp,
-					"ts":                ev.TimeStamp,
-					"message":           ev.Text,
-					"mentioned":         true,
-					"direct":            strings.HasPrefix(ev.Channel, "D"),
-				},
-			}
-			for _, u := range eventData.AuthedUsers {
-				if strings.Contains(ev.Text, fmt.Sprintf("<@%s>", u)) {
-					e.Data["mentioned"] = true
-				}
+				Data:  data,
 			}
 		case *slackevents.MessageEvent:
 			for _, u := range eventData.AuthedUsers {
@@ -262,31 +262,34 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 					return
 				}
 			}
-			e = &payload.Event{
-				Input: c.name,
-				Type:  connectorName,
-				ID:    c.getID(),
-				Data: map[string]interface{}{
-					"user_id":           ev.User,
-					"user_name":         c.getUserByID(ctx, ev.User).Name,
-					"user_display_name": c.getUserByID(ctx, ev.User).Name,
-					"user_real_name":    c.getUserByID(ctx, ev.User).RealName,
-					"channel_id":        ev.Channel,
-					"channel_name":      c.getChannelByID(ctx, ev.Channel).Name,
-					"thread_ts":         ev.ThreadTimeStamp,
-					"ts":                ev.TimeStamp,
-					"message":           ev.Text,
-					"mentioned":         false,
-					"direct":            strings.HasPrefix(ev.Channel, "D"),
+			channel = ev.Channel
+			data := RequestMessage{
+				SlackMessage: SlackMessage{
+					UserID:          ev.User,
+					UserName:        c.getUserByID(ctx, ev.User).Name,
+					UserDisplayName: c.getUserByID(ctx, ev.User).Name,
+					UserRealName:    c.getUserByID(ctx, ev.User).RealName,
+					ChannelID:       ev.Channel,
+					ChannelName:     c.getChannelByID(ctx, ev.Channel).Name,
+					ThreadTS:        ev.ThreadTimeStamp,
+					Timestamp:       ev.TimeStamp,
+					Message:         ev.Text,
+					Direct:          strings.HasPrefix(ev.Channel, "D"),
 				},
 			}
 			for _, u := range eventData.AuthedUsers {
 				if strings.Contains(ev.Text, fmt.Sprintf("<@%s>", u)) {
-					e.Data["mentioned"] = true
+					data.Mentioned = true
 				}
 			}
+			e = &payload.Event{
+				Input: c.name,
+				Type:  RequestTypeMessage,
+				ID:    c.getID(),
+				Data:  data,
+			}
 		}
-		c.sendEventToHandlers(ctx, e)
+		c.sendEventToHandlers(ctx, channel, e)
 	}
 }
 
@@ -317,25 +320,28 @@ func (c *SlackRTM) rtmServe(ctx context.Context) {
 			l.Debug().Msgf("Message: %v\n", ev)
 			// Only text messages from real users
 			if _, ok := c.config.messageTypes[ev.SubType]; ev.User != "" && (ev.SubType == "" || ok) {
+				data := RequestMessage{
+					SlackMessage: SlackMessage{
+						UserID:          ev.User,
+						UserName:        c.getUserByID(ctx, ev.User).Name,
+						UserDisplayName: c.getUserByID(ctx, ev.User).Name,
+						UserRealName:    c.getUserByID(ctx, ev.User).RealName,
+						ChannelID:       ev.Channel,
+						ChannelName:     c.getChannelByID(ctx, ev.Channel).Name,
+						ThreadTS:        ev.ThreadTimestamp,
+						Timestamp:       ev.Timestamp,
+						Message:         ev.Text,
+						Direct:          strings.HasPrefix(ev.Channel, "D"),
+					},
+					Mentioned: strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
+				}
 				e := &payload.Event{
 					Input: c.name,
-					Type:  connectorName,
+					Type:  RequestTypeMessage,
 					ID:    c.getID(),
-					Data: map[string]interface{}{
-						"user_id":           ev.User,
-						"user_name":         c.getUserByID(ctx, ev.User).Name,
-						"user_display_name": c.getUserByID(ctx, ev.User).Name,
-						"user_real_name":    c.getUserByID(ctx, ev.User).RealName,
-						"channel_id":        ev.Channel,
-						"channel_name":      c.getChannelByID(ctx, ev.Channel).Name,
-						"thread_ts":         ev.ThreadTimestamp,
-						"ts":                ev.Timestamp,
-						"message":           ev.Text,
-						"mentioned":         strings.Contains(ev.Text, fmt.Sprintf("<@%s>", c.online.User.ID)),
-						"direct":            strings.HasPrefix(ev.Channel, "D"),
-					},
+					Data:  data,
 				}
-				c.sendEventToHandlers(ctx, e)
+				c.sendEventToHandlers(ctx, ev.Channel, e)
 			}
 
 		case *slack.RTMError:
@@ -358,7 +364,7 @@ func (c *SlackRTM) rtmServe(ctx context.Context) {
 	}
 }
 
-func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *payload.Event) {
+func (c *SlackRTM) sendEventToHandlers(ctx context.Context, channel string, event *payload.Event) {
 	c.RLock()
 	defer c.RUnlock()
 	for _, h := range c.handlers {
@@ -368,10 +374,9 @@ func (c *SlackRTM) sendEventToHandlers(ctx context.Context, event *payload.Event
 				response := new(payload.Response)
 				response.Request = event
 				response.Data = make(map[string]interface{})
-				response.Data["channel_id"], _ = response.Request.Data["channel_id"].(string)
 				response.Data = map[string]interface{}{
 					"data":       res,
-					"channel_id": event.Data["channel_id"].(string),
+					"channel_id": channel,
 				}
 				response.ID = event.ID
 				response.Request = event

@@ -73,20 +73,20 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	e := payload.Event{
 		ID:    c.getID(),
-		Type:  connectorName,
+		Type:  RequestTypeHTTPRequest,
 		Input: c.name,
-		Data: map[string]interface{}{
-			"http_method":       r.Method,
-			"http_host":         r.Host,
-			"http_remote_addr":  r.RemoteAddr,
-			"http_uri":          r.RequestURI,
-			"http_path":         r.URL.Path,
-			"http_form":         r.Form,
-			"http_content_type": r.Header.Get("Content-Type"),
-			"http_referer":      r.Referer(),
-			"http_user_agent":   r.UserAgent(),
-			"http_headers":      map[string][]string(r.Header),
-			"http_body":         buf,
+		Data: RequestHTTPRequest{
+			Method:      r.Method,
+			Host:        r.Host,
+			RemoteAddr:  r.RemoteAddr,
+			Uri:         r.RequestURI,
+			Path:        r.URL.Path,
+			Form:        r.Form,
+			ContentType: r.Header.Get("Content-Type"),
+			Referer:     r.Referer(),
+			UserAgent:   r.UserAgent(),
+			Headers:     r.Header,
+			Body:        string(buf),
 		},
 	}
 	switch r.Header.Get("Content-Type") {
@@ -98,7 +98,11 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		e.Data["http_json"] = v
+		e.Type = RequestTypeHTTPJSONRequest
+		e.Data = RequestHTTPJSONRequest{
+			RequestHTTPRequest: e.Data.(RequestHTTPRequest),
+			JSON:               v,
+		}
 	}
 	response := c.sendEventToHandlers(r.Context(), &e)
 	if response == nil {
@@ -128,7 +132,7 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if contentType, ok := response.Data["http_content_type"].(string); ok {
+	if contentType, ok := response.Data["httpContentType"].(string); ok {
 		w.Header().Set("Content-Type", contentType)
 	}
 
