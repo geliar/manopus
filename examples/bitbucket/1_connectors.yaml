@@ -1,0 +1,20 @@
+connectors:
+  slack:
+    type: slack
+    config:
+      debug: false
+      rtm: false
+      token: *slack_token
+      verification_token: *slack_verification_token
+      bot_icon_url:
+      bot_icon_emoji: *slack_bot_icon
+      message_types:
+      event_callback: /slack/event
+      interaction_callback: /slack/interaction
+  bitbucket:
+    type: bitbucket
+    config:
+      oauth2_key: *bitbucket_oauth2_key
+      oauth2_secret: *bitbucket_oauth2_secret
+      webhook_uuid: *bitbucket_webhook_uuid
+      webhook_callback: /bitbucket

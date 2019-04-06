@@ -1,28 +1,27 @@
 package github
 
 import (
-	"gopkg.in/go-playground/webhooks.v5/github"
 	whgithub "gopkg.in/go-playground/webhooks.v5/github"
 )
 
-const RequestTypePullRequest = string(github.PullRequestEvent)
+const RequestTypePullRequest = string(whgithub.PullRequestEvent)
 
 type RequestPullRequest struct {
-	github.PullRequestPayload
+	whgithub.PullRequestPayload
 	Issue GitHubIssue `json:"issue"`
 }
 
-const RequestTypeIssueComment = string(github.IssueCommentEvent)
+const RequestTypeIssueComment = string(whgithub.IssueCommentEvent)
 
 type RequestIssueComment struct {
-	github.IssueCommentPayload
+	whgithub.IssueCommentPayload
 	GitHubPullRequest
 }
 
 const RequestTypePush = string(whgithub.PushEvent)
 
 type RequestPush struct {
-	github.PushPayload
+	whgithub.PushPayload
 	Branch string     `json:"branch"`
 	Head   GitHubHead `json:"head"`
 }

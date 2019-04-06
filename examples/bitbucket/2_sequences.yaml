@@ -1,0 +1,99 @@
+sequencer:
+  store: sequencer
+  store_key: sequencer_key
+  processor: starlark
+  env:
+    usermap:
+      BBUSER: user
+    approvers:
+      dev:
+        Team Lead:
+        - user
+      qa:
+        QA Team:
+        - user
+      master:
+        QA Team:
+        - user
+        Product Team:
+        - user
+    approve_message:
+      user_name:
+      attachments:
+        - callback_id: "approve_sequence_"
+          attachment_type: "default"
+          actions:
+            - name: Approve
+              text: "Approve"
+              type: button
+              value: approve
+            - name: Decline
+              text: "Decline"
+              type: button
+              value: decline
+      data:
+    build_branches:
+      master: manopus-prod
+      stage: manopus-stage
+      qa: manopus-qa
+  sequences:
+    - name: Approve and Merge
+      steps:
+        - name: ask
+          inputs:
+            - bitbucket
+          type: pull_request:created
+          match: "req.pullrequest.destination.branch.name in env['approvers']"
+          vars:
+          script: |
+            pr_user=req.pullrequest.author.username
+            pr_src_branch=req.pullrequest.source.branch.name
+            pr_dst_branch=req.pullrequest.destination.branch.name
+            if pr_user in env['usermap']:
+              export['chat_userlink'] = env['usermap'][pr_user]
+              chat_userlink = '<@{}>'.format(env['usermap'][pr_user])
+              debug(chat_userlink)
+            else:
+              chat_userlink = pr_user
+              export['chat_userlink'] = ''
+            approvers = env['approvers'][pr_dst_branch]
+            export['repo_owner'] = req.pullrequest.destination.repository.owner.username
+            export['repo_name'] = req.pullrequest.destination.repository.name
+            export['callbacks'] = {}
+            export['approvers_list'] = {}
+            for team in env['approvers'][pr_dst_branch]:
+              message = env['approve_message']
+              message['attachments'][0]['callback_id']+=str(random.randint(0, 10000))
+              message['data'] = 'User {} created Pull Request:\n`{}`\nFrom *{}* to *{}*.\nAs a member of *{}* team please review it then aprove or decline.\nURL: {}'.format(chat_userlink, req.pullrequest.title, pr_src_branch, pr_dst_branch, team, req.pullrequest.links.html.href)
+              message['user_name'] = approvers[team]
+              export['callbacks'][message['attachments'][0]['callback_id']]=team
+              send('slack', message)
+              export['approvers_list'][message['attachments'][0]['callback_id']]=team
+        - name: reaction
+          inputs:
+            - slack
+          types:
+            - interaction
+          match: "req.callback_id in export['callbacks']"
+          vars:
+          script: |
+            key = req.callback_id
+            team = export['callbacks'][key]
+            export['approvers_list'].pop(key)
+            message = {'user_name': export['chat_userlink']}
+            message['data'] = '<@{}> from *{}* has approved your PR.'.format(req.user_name, team)
+            send('slack', message)
+            comment = {'repo_owner': export['repo_owner'], 'repo_name': export['repo_name'], 'issue_number': export['issue_number']}
+            comment['function'] = 'issue_comment'
+            github_name = req.user_name
+            for u in env['usermap']:
+              if env['usermap'][u]==req.user_name:
+                github_name = '@'+u
+                break
+            comment['message'] = "Approved in Slack by {} from {}".format(github_name, team)
+            call('github', comment)
+            if len(export['approvers_list']) > 0:
+              repeat()
+            else:
+              message['data'] = 'Pull request has been approved'
+              send('slack', message)

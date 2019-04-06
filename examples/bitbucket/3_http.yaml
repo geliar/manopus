@@ -1,0 +1,4 @@
+http:
+  # What address and port HTTP server should listen to
+  listen: "0.0.0.0:8000"
+

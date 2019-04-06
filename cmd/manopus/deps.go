@@ -2,6 +2,7 @@ package main
 
 import (
 	//Connectors
+	_ "github.com/geliar/manopus/pkg/connector/bitbucket"
 	_ "github.com/geliar/manopus/pkg/connector/github"
 	_ "github.com/geliar/manopus/pkg/connector/http"
 	_ "github.com/geliar/manopus/pkg/connector/slack"
