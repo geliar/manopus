@@ -60,7 +60,7 @@ func (c *HTTP) Stop(ctx context.Context) {
 	c.stop = true
 }
 
-func (c *HTTP) serveHTTP(w http.ResponseWriter, r *http.Request) {
+func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := logger(r.Context())
 	_ = r.ParseForm()
 	var buf []byte
