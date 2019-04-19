@@ -35,7 +35,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	l = l.With().Str("connector_name", name).Logger()
 	ctx = l.WithContext(ctx)
 	l.Debug().Msgf("Initializing new instance of %s", connectorName)
-	i := new(SlackRTM)
+	i := new(Slack)
 	i.created = time.Now().UTC().UnixNano()
 	i.name = name
 	i.config.debug, _ = config["debug"].(bool)
@@ -66,9 +66,9 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	output.Register(ctx, name, i)
 
 	if eventCallback, _ := config["event_callback"].(string); eventCallback != "" {
-		mhttp.AddHandler(ctx, eventCallback, http.HandlerFunc(i.EventCallbackHandler))
+		mhttp.AddHandler(ctx, eventCallback, http.HandlerFunc(i.eventCallbackHandler))
 	}
 	if interactionCallback, _ := config["interaction_callback"].(string); interactionCallback != "" {
-		mhttp.AddHandler(ctx, interactionCallback, http.HandlerFunc(i.InteractionCallbackHandler))
+		mhttp.AddHandler(ctx, interactionCallback, http.HandlerFunc(i.interactionCallbackHandler))
 	}
 }

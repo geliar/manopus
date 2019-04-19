@@ -24,7 +24,7 @@ type EventInfo struct {
 	Type  string `yaml:"type" json:"type"`
 }
 
-func (p *Payload) ToJson(ctx context.Context) []byte {
+func (p *Payload) ToJSON(ctx context.Context) []byte {
 	l := logger(ctx)
 	buf, err := json.Marshal(p)
 	if err != nil {
@@ -34,7 +34,7 @@ func (p *Payload) ToJson(ctx context.Context) []byte {
 	return buf
 }
 
-func (p *Payload) FromJson(ctx context.Context, data []byte) *Payload {
+func (p *Payload) FromJSON(ctx context.Context, data []byte) *Payload {
 	l := logger(ctx)
 	err := json.Unmarshal(data, p)
 	if err != nil {
@@ -45,12 +45,12 @@ func (p *Payload) FromJson(ctx context.Context, data []byte) *Payload {
 }
 
 func (p *Payload) QueryField(ctx context.Context, query string) interface{} {
-	return gjson.GetBytes(p.ToJson(ctx), query).Value()
+	return gjson.GetBytes(p.ToJSON(ctx), query).Value()
 }
 
 func (p *Payload) SetField(ctx context.Context, query string, data interface{}) {
 	l := logger(ctx).With().Str("query", query).Logger()
-	buf := p.ToJson(ctx)
+	buf := p.ToJSON(ctx)
 	if buf == nil {
 		return
 	}
@@ -59,7 +59,7 @@ func (p *Payload) SetField(ctx context.Context, query string, data interface{}) 
 		l.Error().Msg("Cannot set field value")
 		return
 	}
-	p.FromJson(ctx, buf)
+	p.FromJSON(ctx, buf)
 }
 
 func (p *Payload) ExportField(ctx context.Context, current string, new string) {

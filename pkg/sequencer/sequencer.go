@@ -83,7 +83,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		l.Debug().
 			Msg("Event matched")
 		if !seq.sequenceConfig.Single && seq.step == 0 {
-			l.Debug().Msg("Sequence can be executed in parallel. Creating new one.")
+			l.Debug().Msg("sequence can be executed in parallel. Creating new one.")
 			s.pushnew(seq.sequenceConfig)
 		}
 		var next processor.NextStatus
@@ -133,7 +133,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		} else {
 			//If it is the last step starting sequence from beginning
 			s.pushnew(seq.sequenceConfig)
-			l.Debug().Msg("Sequence is finished. Creating new one.")
+			l.Debug().Msg("sequence is finished. Creating new one.")
 		}
 	}
 	_ = s.save(ctx)
@@ -167,7 +167,7 @@ func (s *Sequencer) load(ctx context.Context) error {
 	}
 
 	if len(buf) == 0 {
-		l.Info().Msg("Sequence store is empty")
+		l.Info().Msg("sequence store is empty")
 		return nil
 	}
 	var tmp struct {
@@ -211,7 +211,7 @@ func (s *Sequencer) sendToOutput(ctx context.Context, response *payload.Response
 }
 
 func (s *Sequencer) pushnew(sc SequenceConfig) {
-	seq := &Sequence{
+	seq := &sequence{
 		id:             s.newID(),
 		sequenceConfig: sc,
 		payload:        &payload.Payload{Env: s.Env},

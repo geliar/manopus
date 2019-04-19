@@ -12,7 +12,7 @@ import (
 type contextElement struct {
 	previous *contextElement
 	next     *contextElement
-	sequence *Sequence
+	sequence *sequence
 }
 
 type sequenceStack struct {
@@ -20,13 +20,13 @@ type sequenceStack struct {
 	sync.RWMutex
 }
 
-func (s *sequenceStack) Push(sequence *Sequence) {
+func (s *sequenceStack) Push(sequence *sequence) {
 	s.Lock()
 	defer s.Unlock()
 	s.push(sequence)
 }
 
-func (s *sequenceStack) PushIfNotExists(sequence *Sequence) {
+func (s *sequenceStack) PushIfNotExists(sequence *sequence) {
 	s.Lock()
 	defer s.Unlock()
 	if !s.exists(sequence) {
@@ -34,14 +34,14 @@ func (s *sequenceStack) PushIfNotExists(sequence *Sequence) {
 	}
 }
 
-func (s *sequenceStack) Exists(sequence *Sequence) bool {
+func (s *sequenceStack) Exists(sequence *sequence) bool {
 	s.RLock()
 	defer s.RUnlock()
 	return s.exists(sequence)
 }
 
 // Match matching event with sequences in stack, pops and returns first matched sequence
-func (s *sequenceStack) Match(ctx context.Context, inputs []string, processorName string, event *payload.Event) (sequences []*Sequence) {
+func (s *sequenceStack) Match(ctx context.Context, inputs []string, processorName string, event *payload.Event) (sequences []*sequence) {
 	s.Lock()
 	defer s.Unlock()
 	elem := s.first
@@ -55,7 +55,7 @@ func (s *sequenceStack) Match(ctx context.Context, inputs []string, processorNam
 	return
 }
 
-func (s *sequenceStack) GC(ctx context.Context) (sequences []*Sequence) {
+func (s *sequenceStack) GC(ctx context.Context) (sequences []*sequence) {
 	s.Lock()
 	defer s.Unlock()
 	elem := s.first
@@ -96,7 +96,7 @@ func (s *sequenceStack) pop(elem *contextElement) {
 
 // push adds element to the beginning of the stack.
 // Warning: push is not thread-safe sequenceStack should be locked before use
-func (s *sequenceStack) push(sequence *Sequence) {
+func (s *sequenceStack) push(sequence *sequence) {
 	e := &contextElement{next: s.first, sequence: sequence}
 	if s.first != nil {
 		s.first.previous = e
@@ -106,7 +106,7 @@ func (s *sequenceStack) push(sequence *Sequence) {
 
 // exists checks existence of the element in the stack.
 // Warning: exists is not thread-safe sequenceStack should be locked before use
-func (s *sequenceStack) exists(sequence *Sequence) bool {
+func (s *sequenceStack) exists(sequence *sequence) bool {
 	elem := s.first
 	for elem != nil {
 		if reflect.DeepEqual(elem.sequence.sequenceConfig, sequence.sequenceConfig) &&
@@ -121,7 +121,7 @@ func (s *sequenceStack) exists(sequence *Sequence) bool {
 func (s *sequenceStack) MarshalJSON() ([]byte, error) {
 	s.Lock()
 	defer s.Unlock()
-	var v []Sequence
+	var v []sequence
 	elem := s.first
 	for elem != nil {
 		if elem.sequence.step != 0 {
@@ -135,7 +135,7 @@ func (s *sequenceStack) MarshalJSON() ([]byte, error) {
 func (s *sequenceStack) UnmarshalJSON(buf []byte) (err error) {
 	s.Lock()
 	defer s.Unlock()
-	var v []Sequence
+	var v []sequence
 
 	err = json.Unmarshal(buf, &v)
 	if err != nil {

@@ -36,7 +36,7 @@ func TestPayload_FromJson(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
 			p := Payload{}
-			p.FromJson(ctx, []byte(tt.in))
+			p.FromJSON(ctx, []byte(tt.in))
 			a.EqualValues(tt.out, p)
 		})
 	}
@@ -68,7 +68,7 @@ func TestPayload_ToJson(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
 			p := tt.in
-			buf := p.ToJson(ctx)
+			buf := p.ToJSON(ctx)
 			a.EqualValues(string(tt.out), string(buf))
 		})
 	}

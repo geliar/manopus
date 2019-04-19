@@ -68,6 +68,7 @@ func (c *catalogStores) register(ctx context.Context, store Store) {
 		Msg("Registered new store")
 }
 
+// StopAll stores
 func StopAll(ctx context.Context) {
 	stores.stopAll(ctx)
 }

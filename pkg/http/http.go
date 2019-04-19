@@ -36,14 +36,17 @@ func Init(ctx context.Context, config HTTPConfig) *HTTPServer {
 	return &server
 }
 
+// AddHandler add http.Handler to the router on specific path
 func AddHandler(ctx context.Context, path string, h http.Handler) {
 	server.AddHandler(ctx, path, h)
 }
 
+// SetDefaultHandler sets default http.Handler for all unspecified paths
 func SetDefaultHandler(ctx context.Context, h http.Handler) {
 	server.SetDefaultHandler(ctx, h)
 }
 
+// Start starts execution of HTTP server
 func (s *HTTPServer) Start(ctx context.Context) {
 	l := logger(ctx)
 	handler := midsimple.New(hlog.NewHandler(l)).
@@ -64,6 +67,7 @@ func (s *HTTPServer) Start(ctx context.Context) {
 	}()
 }
 
+// Stop HTTP server
 func (s *HTTPServer) Stop(ctx context.Context) {
 	l := logger(ctx)
 	if s.instance == nil {
@@ -76,6 +80,7 @@ func (s *HTTPServer) Stop(ctx context.Context) {
 	}
 }
 
+// AddHandler add http.Handler to the router on specific path
 func (s *HTTPServer) AddHandler(ctx context.Context, path string, h http.Handler) {
 	l := logger(ctx).With().Str("http_path", path).Logger()
 	s.Lock()
@@ -91,6 +96,7 @@ func (s *HTTPServer) AddHandler(ctx context.Context, path string, h http.Handler
 	l.Debug().Msg("Added HTTP server handler")
 }
 
+// SetDefaultHandler sets default http.Handler for all unspecified paths
 func (s *HTTPServer) SetDefaultHandler(ctx context.Context, h http.Handler) {
 	l := logger(ctx)
 	s.Lock()

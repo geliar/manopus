@@ -28,20 +28,24 @@ func (*HTTP) validate() error {
 	return nil
 }
 
+// Name returns name of connector
 func (c *HTTP) Name() string {
 	return c.name
 }
 
+// Type returns type of connector
 func (c *HTTP) Type() string {
 	return connectorName
 }
 
+// RegisterHandler with connector
 func (c *HTTP) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.Lock()
 	defer c.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
+// Send response with connector
 func (c *HTTP) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
@@ -51,11 +55,12 @@ func (c *HTTP) Send(ctx context.Context, response *payload.Response) map[string]
 	return nil
 }
 
+// Stop connector
 func (c *HTTP) Stop(ctx context.Context) {
 	c.stop = true
 }
 
-func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (c *HTTP) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	l := logger(r.Context())
 	_ = r.ParseForm()
 	var buf []byte
@@ -64,11 +69,9 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		buf, err = ioutil.ReadAll(r.Body)
 		defer func() { _ = r.Body.Close() }()
 		if err != nil {
-			if err != nil {
-				l.Error().Err(err).Msg("Cannot read HTTP request body")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+			l.Error().Err(err).Msg("Cannot read HTTP request body")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}()
 	e := payload.Event{

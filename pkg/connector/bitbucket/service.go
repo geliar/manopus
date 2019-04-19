@@ -116,6 +116,7 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Stop connector
 func (c *GitHub) Stop(ctx context.Context) {
 	if !c.stop {
 		c.stop = true
