@@ -5,11 +5,13 @@ import (
 	"sync"
 )
 
+// Config configuration structure for store
 type Config struct {
 	Type   string                 `yaml:"type"`
 	Config map[string]interface{} `yaml:"config"`
 }
 
+// Builder describes a builder function
 type Builder func(ctx context.Context, name string, config map[string]interface{})
 
 type catalogBuilders struct {
@@ -27,24 +29,34 @@ var (
 	builders catalogBuilders
 )
 
+// RegisterBuilder registers store builder in the builder catalog
 func RegisterBuilder(ctx context.Context, name string, builder Builder) {
 	builders.register(ctx, name, builder)
 }
 
+// RegisterStore registers store in the store catalog
 func RegisterStore(ctx context.Context, store Store) {
 	stores.register(ctx, store)
 }
 
+// Save puts data to specified store
 func Save(ctx context.Context, name string, key string, value []byte) (err error) {
 	return stores.save(ctx, name, key, value)
 }
 
+// Load returns data from specified store
 func Load(ctx context.Context, name string, key string) (value []byte, err error) {
 	return stores.load(ctx, name, key)
 }
 
+// ConfigureStore configures store with configuration data
 func ConfigureStore(ctx context.Context, name string, store Config) {
 	builders.configure(ctx, name, store)
+}
+
+// StopAll stores
+func StopAll(ctx context.Context) {
+	stores.stopAll(ctx)
 }
 
 func (c *catalogStores) register(ctx context.Context, store Store) {
@@ -66,10 +78,6 @@ func (c *catalogStores) register(ctx context.Context, store Store) {
 	c.stores[store.Name()] = store
 	l.Debug().
 		Msg("Registered new store")
-}
-
-func StopAll(ctx context.Context) {
-	stores.stopAll(ctx)
 }
 
 func (c *catalogStores) save(ctx context.Context, name string, key string, value []byte) (err error) {

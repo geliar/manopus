@@ -13,6 +13,7 @@ import (
 	"github.com/geliar/manopus/pkg/payload"
 )
 
+// Timer implementation of timer connector
 type Timer struct {
 	created  int64
 	id       int64
@@ -23,20 +24,24 @@ type Timer struct {
 	mu       sync.RWMutex
 }
 
+// Name returns name of the connector
 func (c *Timer) Name() string {
 	return c.name
 }
 
+// Type returns type of connector
 func (c *Timer) Type() string {
 	return connectorName
 }
 
+// RegisterHandler registers event handler with connector
 func (c *Timer) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
+// Send sends response with connector
 func (c *Timer) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
@@ -76,9 +81,9 @@ func (c *Timer) Send(ctx context.Context, response *payload.Response) map[string
 			data, _ := response.Data["data"].(map[string]interface{})
 			c.sendEventToHandlers(ctx, &payload.Event{
 				Input: c.name,
-				Type:  RequestTypeTimer,
+				Type:  requestTypeTimer,
 				ID:    id,
-				Data: RequestTimer{
+				Data: requestTimer{
 					TimerID: id,
 					Now:     time.Now().UTC().Unix(),
 					Data:    data,
@@ -93,6 +98,7 @@ func (c *Timer) Send(ctx context.Context, response *payload.Response) map[string
 	return nil
 }
 
+//Stop stops execution of connector
 func (c *Timer) Stop(ctx context.Context) {
 	if !c.stop {
 		c.stop = true
@@ -136,9 +142,9 @@ func (c *Timer) ticker(ctx context.Context, duration time.Duration) {
 			id := c.getID()
 			c.sendEventToHandlers(ctx, &payload.Event{
 				Input: c.name,
-				Type:  RequestTypeTicker,
+				Type:  requestTypeTicker,
 				ID:    id,
-				Data: RequestTicker{
+				Data: requestTicker{
 					TickerID: id,
 					Now:      now.UTC().Unix(),
 				},

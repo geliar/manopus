@@ -24,10 +24,14 @@ type StepConfig struct {
 	Types []string `yaml:"types" json:"types"`
 	//Vars list of variables to be added to payload vars field
 	Vars map[string]interface{} `yaml:"vars" json:"vars"`
+	//File contains name of the file with scripts to be used with Match, Script and/or Method
+	File string `yaml:"file" json:"file"`
 	//Match contains matcher script
 	Match interface{} `yaml:"match" json:"match"`
 	//Script contains script to execute on successful match
 	Script interface{} `yaml:"script" json:"script"`
+	//Method contains name of the method to be executed from File
+	Method string `yaml:"method" json:"method"`
 	//Timeout (optional) time (in seconds) to cancel sequence if step is waiting longer
 	Timeout int64 `yaml:"timeout" json:"timeout"`
 	//MaxExecutionTime (optional) maximum time (in seconds) of execution of the script

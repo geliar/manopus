@@ -6,6 +6,7 @@ import (
 
 var config Config
 
+// Init initialize reporter with config
 func Init(ctx context.Context, cfg Config) {
 	l := logger(ctx)
 	config = cfg

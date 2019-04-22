@@ -12,6 +12,7 @@ import (
 	"github.com/geliar/manopus/pkg/report"
 )
 
+// Exec executes console command, puts result into report and returns it to requester
 func Exec(ctx context.Context, reporter report.Driver, name string, arg ...string) (result int, stdoutResult, stderrResult string) {
 	l := logger(ctx)
 
@@ -51,12 +52,12 @@ func Exec(ctx context.Context, reporter report.Driver, name string, arg ...strin
 
 	err = cmd.Wait()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); !ok {
+		exitErr, ok := err.(*exec.ExitError)
+		if !ok {
 			l.Error().Err(err).Msg("Error when executing script")
 			return 1, "", ""
-		} else {
-			return exitErr.Sys().(syscall.WaitStatus).ExitStatus(), stdoutBuf.String(), stderrBuf.String()
 		}
+		return exitErr.Sys().(syscall.WaitStatus).ExitStatus(), stdoutBuf.String(), stderrBuf.String()
 	}
 
 	return 0, stdoutBuf.String(), stderrBuf.String()

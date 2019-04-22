@@ -20,7 +20,8 @@ import (
 	"github.com/geliar/manopus/pkg/payload"
 )
 
-type SlackRTM struct {
+//Slack implementation of connector for Slack chat
+type Slack struct {
 	created int64
 	id      int64
 	name    string
@@ -44,25 +45,29 @@ type SlackRTM struct {
 	sync.RWMutex
 }
 
-func (*SlackRTM) validate() error {
+func (*Slack) validate() error {
 	return nil
 }
 
-func (c *SlackRTM) Name() string {
+// Name returns name of the connector
+func (c *Slack) Name() string {
 	return c.name
 }
 
-func (c *SlackRTM) Type() string {
+// Type returns type of connector
+func (c *Slack) Type() string {
 	return connectorName
 }
 
-func (c *SlackRTM) RegisterHandler(ctx context.Context, handler input.Handler) {
+// RegisterHandler registers event handler with connector
+func (c *Slack) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.Lock()
 	defer c.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
-func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
+// Send sends response with connector
+func (c *Slack) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
 		Str("input_name", response.Request.Input).
@@ -114,7 +119,8 @@ func (c *SlackRTM) Send(ctx context.Context, response *payload.Response) map[str
 	return map[string]interface{}{"result": res}
 }
 
-func (c *SlackRTM) Stop(ctx context.Context) {
+// Stop stops connector
+func (c *Slack) Stop(ctx context.Context) {
 	c.Lock()
 	if c.stop {
 		c.Unlock()
@@ -128,7 +134,7 @@ func (c *SlackRTM) Stop(ctx context.Context) {
 	}
 }
 
-func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Slack) interactionCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	l := hlog.FromRequest(r)
 	ctx := l.WithContext(context.Background())
 	buf := new(bytes.Buffer)
@@ -159,17 +165,17 @@ func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Req
 		l.Error().Msg("Wrong verification token")
 		return
 	}
-	var actions []MessageAction
+	var actions []messageAction
 	for i := range ev.Actions {
-		actions = append(actions, MessageAction{
+		actions = append(actions, messageAction{
 			Name:  ev.Actions[i].Name,
 			Value: ev.Actions[i].Value,
 			Text:  ev.Actions[i].Text,
 		})
 	}
 
-	data := RequestInteraction{
-		SlackMessage: SlackMessage{
+	data := requestInteraction{
+		slackMessage: slackMessage{
 			UserID:          ev.User.ID,
 			UserName:        c.getUserByID(ctx, ev.User.ID).Name,
 			UserDisplayName: c.getUserByID(ctx, ev.User.ID).Name,
@@ -187,7 +193,7 @@ func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Req
 
 	e := &payload.Event{
 		Input: c.name,
-		Type:  RequestTypeInteraction,
+		Type:  requestTypeInteraction,
 		ID:    c.getID(),
 		Data:  data,
 	}
@@ -195,7 +201,7 @@ func (c *SlackRTM) InteractionCallbackHandler(w http.ResponseWriter, r *http.Req
 	c.sendEventToHandlers(ctx, ev.Channel.ID, e)
 }
 
-func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Slack) eventCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	l := hlog.FromRequest(r)
 	ctx := l.WithContext(context.Background())
 	buf := new(bytes.Buffer)
@@ -234,8 +240,8 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 			channel = ev.Channel
-			data := RequestMessage{
-				SlackMessage: SlackMessage{
+			data := requestMessage{
+				slackMessage: slackMessage{
 					UserID:          ev.User,
 					UserName:        c.getUserByID(ctx, ev.User).Name,
 					UserDisplayName: c.getUserByID(ctx, ev.User).Name,
@@ -251,7 +257,7 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			e = &payload.Event{
 				Input: c.name,
-				Type:  RequestTypeMessage,
+				Type:  requestTypeMessage,
 				ID:    c.getID(),
 				Data:  data,
 			}
@@ -263,8 +269,8 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 			channel = ev.Channel
-			data := RequestMessage{
-				SlackMessage: SlackMessage{
+			data := requestMessage{
+				slackMessage: slackMessage{
 					UserID:          ev.User,
 					UserName:        c.getUserByID(ctx, ev.User).Name,
 					UserDisplayName: c.getUserByID(ctx, ev.User).Name,
@@ -284,7 +290,7 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			e = &payload.Event{
 				Input: c.name,
-				Type:  RequestTypeMessage,
+				Type:  requestTypeMessage,
 				ID:    c.getID(),
 				Data:  data,
 			}
@@ -293,7 +299,7 @@ func (c *SlackRTM) EventCallbackHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (c *SlackRTM) rtmServe(ctx context.Context) {
+func (c *Slack) rtmServe(ctx context.Context) {
 	l := logger(ctx)
 	go c.rtm.ManageConnection()
 	l.Debug().Msg("Slack RTM connection has been started")
@@ -320,8 +326,8 @@ func (c *SlackRTM) rtmServe(ctx context.Context) {
 			l.Debug().Msgf("Message: %v\n", ev)
 			// Only text messages from real users
 			if _, ok := c.config.messageTypes[ev.SubType]; ev.User != "" && (ev.SubType == "" || ok) {
-				data := RequestMessage{
-					SlackMessage: SlackMessage{
+				data := requestMessage{
+					slackMessage: slackMessage{
 						UserID:          ev.User,
 						UserName:        c.getUserByID(ctx, ev.User).Name,
 						UserDisplayName: c.getUserByID(ctx, ev.User).Name,
@@ -337,7 +343,7 @@ func (c *SlackRTM) rtmServe(ctx context.Context) {
 				}
 				e := &payload.Event{
 					Input: c.name,
-					Type:  RequestTypeMessage,
+					Type:  requestTypeMessage,
 					ID:    c.getID(),
 					Data:  data,
 				}
@@ -364,7 +370,7 @@ func (c *SlackRTM) rtmServe(ctx context.Context) {
 	}
 }
 
-func (c *SlackRTM) sendEventToHandlers(ctx context.Context, channel string, event *payload.Event) {
+func (c *Slack) sendEventToHandlers(ctx context.Context, channel string, event *payload.Event) {
 	c.RLock()
 	defer c.RUnlock()
 	for _, h := range c.handlers {
@@ -387,7 +393,7 @@ func (c *SlackRTM) sendEventToHandlers(ctx context.Context, channel string, even
 	}
 }
 
-func (c *SlackRTM) updateChannels(ctx context.Context) {
+func (c *Slack) updateChannels(ctx context.Context) {
 	l := logger(ctx)
 	l.Debug().Msg("Updating Slack messageTypes")
 	var resChannels []slack.Channel
@@ -415,7 +421,7 @@ func (c *SlackRTM) updateChannels(ctx context.Context) {
 	l.Debug().Msgf("Found %d messageTypes", len(resChannels))
 }
 
-func (c *SlackRTM) updateUsers(ctx context.Context) {
+func (c *Slack) updateUsers(ctx context.Context) {
 	l := logger(ctx)
 	l.Debug().Msg("Updating Slack users")
 	users, err := c.rtm.GetUsersContext(ctx)
@@ -429,7 +435,7 @@ func (c *SlackRTM) updateUsers(ctx context.Context) {
 	l.Debug().Msgf("Found %d users", len(users))
 }
 
-func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.User) {
+func (c *Slack) getUserByName(ctx context.Context, name string) (user slack.User) {
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].Name == name {
@@ -452,7 +458,7 @@ func (c *SlackRTM) getUserByName(ctx context.Context, name string) (user slack.U
 	return
 }
 
-func (c *SlackRTM) getUserByDisplayName(ctx context.Context, name string) (user slack.User) {
+func (c *Slack) getUserByDisplayName(ctx context.Context, name string) (user slack.User) {
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].Profile.DisplayNameNormalized == name {
@@ -475,7 +481,7 @@ func (c *SlackRTM) getUserByDisplayName(ctx context.Context, name string) (user 
 	return
 }
 
-func (c *SlackRTM) getUserByID(ctx context.Context, id string) (user slack.User) {
+func (c *Slack) getUserByID(ctx context.Context, id string) (user slack.User) {
 	c.RLock()
 	for i := range c.online.Users {
 		if c.online.Users[i].ID == id {
@@ -498,7 +504,7 @@ func (c *SlackRTM) getUserByID(ctx context.Context, id string) (user slack.User)
 	return
 }
 
-func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (channel slack.Channel) {
+func (c *Slack) getChannelByName(ctx context.Context, name string) (channel slack.Channel) {
 	c.RLock()
 	for i := range c.online.Channels {
 		if c.online.Channels[i].Name == name {
@@ -521,7 +527,7 @@ func (c *SlackRTM) getChannelByName(ctx context.Context, name string) (channel s
 	return
 }
 
-func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (channel slack.Channel) {
+func (c *Slack) getChannelByID(ctx context.Context, id string) (channel slack.Channel) {
 	if strings.HasPrefix(id, "D") {
 		return
 	}
@@ -547,7 +553,7 @@ func (c *SlackRTM) getChannelByID(ctx context.Context, id string) (channel slack
 	return
 }
 
-func (c *SlackRTM) openIM(ctx context.Context, userID string) (imID string) {
+func (c *Slack) openIM(ctx context.Context, userID string) (imID string) {
 	log.Debug().
 		Str("slack_user_id", userID).
 		Msg("Openning new Slack IM channel")
@@ -555,7 +561,7 @@ func (c *SlackRTM) openIM(ctx context.Context, userID string) (imID string) {
 	return imID
 }
 
-func (c *SlackRTM) sendToChannels(ctx context.Context, channels []string, attachments []slack.Attachment, message string) (result []map[string]interface{}) {
+func (c *Slack) sendToChannels(ctx context.Context, channels []string, attachments []slack.Attachment, message string) (result []map[string]interface{}) {
 	l := logger(ctx)
 	l.Debug().
 		Strs("slack_channel", channels).
@@ -587,7 +593,7 @@ func (c *SlackRTM) sendToChannels(ctx context.Context, channels []string, attach
 	return
 }
 
-func (c *SlackRTM) getChannelIDs(ctx context.Context, response *payload.Response) []string {
+func (c *Slack) getChannelIDs(ctx context.Context, response *payload.Response) []string {
 	switch v := response.Data["channel_id"].(type) {
 	case string:
 		return []string{v}
@@ -679,7 +685,7 @@ func (c *SlackRTM) getChannelIDs(ctx context.Context, response *payload.Response
 	return nil
 }
 
-func (c *SlackRTM) getID() string {
+func (c *Slack) getID() string {
 	id := atomic.AddInt64(&c.id, 1)
 	return fmt.Sprintf("%s-%d-%d", c.name, c.created, id)
 }

@@ -17,6 +17,7 @@ func init() {
 	report.Register(log.Logger.WithContext(context.Background()), serviceName, New)
 }
 
+// FS implementation of report.Driver interface
 type FS struct {
 	path     string
 	id       string
@@ -27,6 +28,7 @@ type FS struct {
 	closed   bool
 }
 
+// New creates new report
 func New(config map[string]interface{}, id string, step int) report.Driver {
 	i := new(FS)
 	i.path, _ = config["path"].(string)
@@ -38,10 +40,12 @@ func New(config map[string]interface{}, id string, step int) report.Driver {
 	return i
 }
 
+// Type returns type of connector
 func (d *FS) Type() string {
 	return serviceName
 }
 
+// PushString pushes string to report
 func (d *FS) PushString(ctx context.Context, report string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -51,6 +55,7 @@ func (d *FS) PushString(ctx context.Context, report string) {
 	d.reports = append(d.reports, bytes.NewBufferString(report))
 }
 
+// PushReader pushes io.Reader to report to allow streaming of log to report
 func (d *FS) PushReader(ctx context.Context, report io.Reader) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -66,6 +71,7 @@ func (d *FS) PushReader(ctx context.Context, report io.Reader) {
 	}()
 }
 
+// Close close report
 func (d *FS) Close(ctx context.Context) {
 	d.closed = true
 	//Wait for pushes

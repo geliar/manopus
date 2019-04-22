@@ -12,14 +12,17 @@ type catalogStore struct {
 
 var catalog catalogStore
 
+// Register registers input driver in the catalog of inputs
 func Register(ctx context.Context, name string, driver Driver) {
 	catalog.register(ctx, name, driver)
 }
 
+// RegisterHandlerAll register handler in all inputs
 func RegisterHandlerAll(ctx context.Context, handler Handler) {
 	catalog.registerHandlerAll(ctx, handler)
 }
 
+// StopAll stops all inputs
 func StopAll(ctx context.Context) {
 	catalog.stopAll(ctx)
 }

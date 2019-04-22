@@ -4,29 +4,29 @@ import (
 	whgithub "gopkg.in/go-playground/webhooks.v5/github"
 )
 
-const RequestTypePullRequest = string(whgithub.PullRequestEvent)
+const requestTypePullRequest = string(whgithub.PullRequestEvent)
 
-type RequestPullRequest struct {
+type requestPullRequest struct {
 	whgithub.PullRequestPayload
-	Issue GitHubIssue `json:"issue"`
+	Issue gitHubIssue `json:"issue"`
 }
 
-const RequestTypeIssueComment = string(whgithub.IssueCommentEvent)
+const requestTypeIssueComment = string(whgithub.IssueCommentEvent)
 
-type RequestIssueComment struct {
+type requestIssueComment struct {
 	whgithub.IssueCommentPayload
-	GitHubPullRequest
+	gitHubPullRequest
 }
 
-const RequestTypePush = string(whgithub.PushEvent)
+const requestTypePush = string(whgithub.PushEvent)
 
-type RequestPush struct {
+type requestPush struct {
 	whgithub.PushPayload
 	Branch string     `json:"branch"`
-	Head   GitHubHead `json:"head"`
+	Head   gitHubHead `json:"head"`
 }
 
-type GitHubHead struct {
+type gitHubHead struct {
 	Ref  string `json:"ref"`
 	Sha  string `json:"sha"`
 	User struct {
@@ -36,7 +36,7 @@ type GitHubHead struct {
 	} `json:"user"`
 }
 
-type GitHubIssue struct {
+type gitHubIssue struct {
 	URL         string `json:"url"`
 	LabelsURL   string `json:"labels_url"`
 	CommentsURL string `json:"comments_url"`
@@ -47,7 +47,7 @@ type GitHubIssue struct {
 	Title       string `json:"title"`
 }
 
-type GitHubPullRequest struct {
+type gitHubPullRequest struct {
 	URL      string `json:"url"`
 	ID       int64  `json:"id"`
 	HTMLURL  string `json:"html_url"`

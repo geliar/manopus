@@ -40,7 +40,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 			if err != nil {
 				l.Error().Err(err).Msg("Error applying GitHub secret")
 			}
-			mhttp.AddHandler(ctx, callback, http.HandlerFunc(i.WebhookHandler))
+			mhttp.AddHandler(ctx, callback, http.HandlerFunc(i.webhookHandler))
 			l.Info().Msgf("GitHub webhook on path %s", callback)
 		}
 		token, _ := config["oauth2_token"].(string)

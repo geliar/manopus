@@ -1,21 +1,21 @@
 package slack
 
-const RequestTypeInteraction = "interaction"
+const requestTypeInteraction = "interaction"
 
-type RequestInteraction struct {
-	SlackMessage
+type requestInteraction struct {
+	slackMessage
 	CallbackID string          `starlark:"callback_id" json:"callback_id"`
-	Actions    []MessageAction `starlark:"actions" json:"actions"`
+	Actions    []messageAction `starlark:"actions" json:"actions"`
 }
 
-const RequestTypeMessage = "event"
+const requestTypeMessage = "event"
 
-type RequestMessage struct {
-	SlackMessage
+type requestMessage struct {
+	slackMessage
 	Mentioned bool `starlark:"mentioned" json:"mentioned"`
 }
 
-type SlackMessage struct {
+type slackMessage struct {
 	UserID          string `starlark:"user_id" json:"user_id"`
 	UserName        string `starlark:"user_name" json:"user_name"`
 	UserDisplayName string `starlark:"user_display_name" json:"user_display_name"`
@@ -28,7 +28,7 @@ type SlackMessage struct {
 	Direct          bool   `starlark:"direct" json:"direct"`
 }
 
-type MessageAction struct {
+type messageAction struct {
 	Name  string `starlark:"name" json:"name"`
 	Value string `starlark:"value" json:"value"`
 	Text  string `starlark:"text" json:"text"`

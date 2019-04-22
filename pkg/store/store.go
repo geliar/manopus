@@ -2,6 +2,7 @@ package store
 
 import "context"
 
+// Store Manopus storage interface
 type Store interface {
 	//Name get name of the Store
 	Name() string

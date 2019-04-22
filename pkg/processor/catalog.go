@@ -15,14 +15,17 @@ type catalogStore struct {
 
 var catalog catalogStore
 
+// Register register processor in catalog
 func Register(ctx context.Context, processor Processor) {
 	catalog.register(ctx, processor)
 }
 
+// Run executes script with specified processor
 func Run(ctx context.Context, reporter report.Driver, name string, script interface{}, event *payload.Event, payload *payload.Payload) (next NextStatus, callback interface{}, responses []payload.Response, err error) {
 	return catalog.run(ctx, reporter, name, script, event, payload)
 }
 
+// Match matches event with specified processor
 func Match(ctx context.Context, name string, match interface{}, payload *payload.Payload) (matched bool, err error) {
 	return catalog.match(ctx, name, match, payload)
 }

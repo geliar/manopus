@@ -10,7 +10,7 @@ import (
 	"github.com/geliar/manopus/pkg/report"
 )
 
-type Sequence struct {
+type sequence struct {
 	id             string
 	sequenceConfig SequenceConfig
 	step           int
@@ -19,7 +19,7 @@ type Sequence struct {
 	latestMatch    time.Time
 }
 
-func (s *Sequence) Match(ctx context.Context, inputs []string, processorName string, event *payload.Event) (matched bool) {
+func (s *sequence) Match(ctx context.Context, inputs []string, processorName string, event *payload.Event) (matched bool) {
 	l := logger(ctx)
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).
@@ -70,7 +70,7 @@ func (s *Sequence) Match(ctx context.Context, inputs []string, processorName str
 	return true
 }
 
-func (s *Sequence) Run(ctx context.Context, reporter report.Driver, processorName string) (next processor.NextStatus, callback interface{}, responses []payload.Response) {
+func (s *sequence) Run(ctx context.Context, reporter report.Driver, processorName string) (next processor.NextStatus, callback interface{}, responses []payload.Response) {
 	l := logger(ctx)
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).
@@ -105,7 +105,7 @@ func (s *Sequence) Run(ctx context.Context, reporter report.Driver, processorNam
 	return
 }
 
-func (s *Sequence) TimedOut(ctx context.Context) bool {
+func (s *sequence) TimedOut(ctx context.Context) bool {
 	l := logger(ctx)
 	l = l.With().
 		Str("sequence_name", s.sequenceConfig.Name).
@@ -117,7 +117,7 @@ func (s *Sequence) TimedOut(ctx context.Context) bool {
 	return false
 }
 
-func (s *Sequence) MarshalJSON() ([]byte, error) {
+func (s *sequence) MarshalJSON() ([]byte, error) {
 	compat := struct {
 		SequenceConfig SequenceConfig
 		Step           int
@@ -136,7 +136,7 @@ func (s *Sequence) MarshalJSON() ([]byte, error) {
 	return json.Marshal(compat)
 }
 
-func (s *Sequence) UnmarshalJSON(buf []byte) (err error) {
+func (s *sequence) UnmarshalJSON(buf []byte) (err error) {
 	compat := struct {
 		SequenceConfig SequenceConfig
 		Step           int

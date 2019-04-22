@@ -33,13 +33,16 @@ func init() {
 	convert.StructTags = append(convert.StructTags, "json")
 }
 
+//Starlark implementation of Processor interface
 type Starlark struct {
 }
 
+// Type returns type of processor
 func (p *Starlark) Type() string {
 	return serviceName
 }
 
+//Run executes script
 func (p *Starlark) Run(ctx context.Context, reporter report.Driver, rawScript interface{}, event *payload.Event, payload *payload.Payload) (next processor.NextStatus, callback interface{}, responses []payload.Response, err error) {
 	next = processor.NextContinue
 	script := p.collectScript(ctx, rawScript)
@@ -49,7 +52,7 @@ func (p *Starlark) Run(ctx context.Context, reporter report.Driver, rawScript in
 		next = processor.NextContinue
 		return
 	}
-	if *result {
+	if result != nil && *result {
 		next = processor.NextRepeatStep
 		return
 	}
@@ -91,7 +94,7 @@ func (p Starlark) run(ctx context.Context, reporter report.Driver, script string
 		l := l.With().Str("starlark_function", "send").Logger()
 		if args.Len() != 2 || args.Index(0).Type() != "string" || args.Index(1).Type() != "dict" {
 			l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be send(string, dict).")
-			return starlark.None, errors.New("wrong args, should be send(string, dict).")
+			return starlark.None, errors.New("wrong args should be send(string, dict)")
 		}
 		outputName := args.Index(0).(starlark.String).GoString()
 		response := sconvert.FromDict(args.Index(1).(*starlark.Dict))
@@ -106,7 +109,7 @@ func (p Starlark) run(ctx context.Context, reporter report.Driver, script string
 		l := l.With().Str("starlark_function", "call").Logger()
 		if args.Len() != 2 || args.Index(0).Type() != "string" || args.Index(1).Type() != "dict" {
 			l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be call(string, dict).")
-			return starlark.None, errors.New("wrong args, should be call(string, dict).")
+			return starlark.None, errors.New("wrong args should be call(string, dict)")
 		}
 		outputName := args.Index(0).(starlark.String).GoString()
 		response := sconvert.FromDict(args.Index(1).(*starlark.Dict))
@@ -129,7 +132,7 @@ func (p Starlark) run(ctx context.Context, reporter report.Driver, script string
 		l := l.With().Str("starlark_function", "system").Logger()
 		if args.Len() != 1 || args.Index(0).Type() != "list" {
 			l.Error().Int("args_len", args.Len()).Msg("Wrong args. Should be system(list).")
-			return starlark.None, errors.New("wrong args, should be system(list).")
+			return starlark.None, errors.New("wrong args should be system(list)")
 		}
 		cmd := sconvert.FromList(args.Index(0).(*starlark.List))
 		var cmdStr []string

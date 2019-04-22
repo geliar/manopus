@@ -15,6 +15,7 @@ import (
 	"github.com/geliar/manopus/pkg/store"
 )
 
+// Sequencer implementation of Sequencer
 type Sequencer struct {
 	//Env variables which represent env part of context data
 	Env map[string]interface{} `yaml:"env"`
@@ -37,6 +38,7 @@ type Sequencer struct {
 	mainCtx          context.Context
 }
 
+// Init initializes Seqeuncer
 func (s *Sequencer) Init(ctx context.Context, noload bool) {
 	s.mainCtx = ctx
 	s.sequenceIDPrefix = time.Now().UTC().Format("20060102150405")
@@ -48,6 +50,7 @@ func (s *Sequencer) Init(ctx context.Context, noload bool) {
 	}
 }
 
+// Roll process event with sequences
 func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response interface{}) {
 	l := logger(ctx).With().
 		Str("event_input", event.Input).
@@ -83,7 +86,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		l.Debug().
 			Msg("Event matched")
 		if !seq.sequenceConfig.Single && seq.step == 0 {
-			l.Debug().Msg("Sequence can be executed in parallel. Creating new one.")
+			l.Debug().Msg("sequence can be executed in parallel. Creating new one.")
 			s.pushnew(seq.sequenceConfig)
 		}
 		var next processor.NextStatus
@@ -133,13 +136,14 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 		} else {
 			//If it is the last step starting sequence from beginning
 			s.pushnew(seq.sequenceConfig)
-			l.Debug().Msg("Sequence is finished. Creating new one.")
+			l.Debug().Msg("sequence is finished. Creating new one.")
 		}
 	}
 	_ = s.save(ctx)
 	return
 }
 
+// Stop stops Sequencer
 func (s *Sequencer) Stop(ctx context.Context) {
 	l := logger(ctx)
 	l.Info().Msg("Shutting down sequencer")
@@ -167,7 +171,7 @@ func (s *Sequencer) load(ctx context.Context) error {
 	}
 
 	if len(buf) == 0 {
-		l.Info().Msg("Sequence store is empty")
+		l.Info().Msg("sequence store is empty")
 		return nil
 	}
 	var tmp struct {
@@ -211,7 +215,7 @@ func (s *Sequencer) sendToOutput(ctx context.Context, response *payload.Response
 }
 
 func (s *Sequencer) pushnew(sc SequenceConfig) {
-	seq := &Sequence{
+	seq := &sequence{
 		id:             s.newID(),
 		sequenceConfig: sc,
 		payload:        &payload.Payload{Env: s.Env},

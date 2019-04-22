@@ -25,7 +25,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 	l = l.With().Str("connector_name", name).Logger()
 	ctx = l.WithContext(ctx)
 	l.Debug().Msgf("Initializing new instance of %s", serviceName)
-	i := new(GitHub)
+	i := new(Bitbucket)
 	i.created = time.Now().UTC().UnixNano()
 	i.name = name
 	i.stopCh = make(chan struct{})
@@ -38,7 +38,7 @@ func builder(ctx context.Context, name string, config map[string]interface{}) {
 			if err != nil {
 				l.Error().Err(err).Msg("Error applying Bitbucket UUID")
 			}
-			mhttp.AddHandler(ctx, callback, http.HandlerFunc(i.WebhookHandler))
+			mhttp.AddHandler(ctx, callback, http.HandlerFunc(i.webhookHandler))
 			l.Info().Msgf("Bitbucket webhook on path %s", callback)
 		}
 		okey, _ := config["oauth2_key"].(string)

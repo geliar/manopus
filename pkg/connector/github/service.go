@@ -21,6 +21,7 @@ import (
 	"github.com/geliar/manopus/pkg/payload"
 )
 
+// GitHub connector implementation
 type GitHub struct {
 	created  int64
 	id       int64
@@ -33,20 +34,24 @@ type GitHub struct {
 	client   *cgithub.Client
 }
 
+// Name returns name of the connector
 func (c *GitHub) Name() string {
 	return c.name
 }
 
+// Type returns type of connector
 func (c *GitHub) Type() string {
 	return serviceName
 }
 
+// RegisterHandler registers event handler with connector
 func (c *GitHub) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
+// Send sends response with connector
 func (c *GitHub) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
@@ -245,7 +250,15 @@ func (c *GitHub) Send(ctx context.Context, response *payload.Response) map[strin
 	return nil
 }
 
-func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
+// Stop connector
+func (c *GitHub) Stop(ctx context.Context) {
+	if !c.stop {
+		c.stop = true
+		close(c.stopCh)
+	}
+}
+
+func (c *GitHub) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	tl := hlog.FromRequest(r)
 	ctx := tl.WithContext(context.Background())
 	_ = ctx
@@ -265,7 +278,7 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	case whgithub.PullRequestPayload:
 
-		var issue GitHubIssue
+		var issue gitHubIssue
 		if parts := strings.Split(v.PullRequest.IssueURL, "/"); len(parts) == 8 &&
 			parts[6] == "issues" &&
 			parts[7] != "" {
@@ -275,15 +288,15 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 				issue.Number = int64(number)
 			}
 		}
-		event.Type = RequestTypePullRequest
-		event.Data = RequestPullRequest{
+		event.Type = requestTypePullRequest
+		event.Data = requestPullRequest{
 			PullRequestPayload: v,
 			Issue:              issue,
 		}
 
 		l.Debug().Msg("Pull request event")
 	case whgithub.IssueCommentPayload:
-		var pr GitHubPullRequest
+		var pr gitHubPullRequest
 		if parts := strings.Split(v.Issue.HTMLURL, "/"); len(parts) == 7 &&
 			parts[5] == "pull" &&
 			parts[6] != "" {
@@ -293,10 +306,10 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 				pr.Number = int64(number)
 			}
 		}
-		event.Type = RequestTypeIssueComment
-		event.Data = RequestIssueComment{
+		event.Type = requestTypeIssueComment
+		event.Data = requestIssueComment{
 			IssueCommentPayload: v,
-			GitHubPullRequest:   pr,
+			gitHubPullRequest:   pr,
 		}
 
 		l.Debug().Msg("Issue comment event")
@@ -305,11 +318,11 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		if parts := strings.Split(v.Ref, "/")[2]; len(parts) == 3 {
 			branch = strings.Split(v.Ref, "/")[2]
 		}
-		event.Type = RequestTypePush
-		event.Data = RequestPush{
+		event.Type = requestTypePush
+		event.Data = requestPush{
 			PushPayload: v,
 			Branch:      branch,
-			Head: GitHubHead{
+			Head: gitHubHead{
 				Ref:  v.Ref,
 				Sha:  v.HeadCommit.ID,
 				User: v.HeadCommit.Author,
@@ -323,13 +336,6 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if event.Data != nil {
 		c.sendEventToHandlers(ctx, event)
-	}
-}
-
-func (c *GitHub) Stop(ctx context.Context) {
-	if !c.stop {
-		c.stop = true
-		close(c.stopCh)
 	}
 }
 

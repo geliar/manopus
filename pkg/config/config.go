@@ -35,10 +35,11 @@ type Config struct {
 	//Report config
 	Report report.Config
 	//HTTP server config
-	HTTP http.HTTPConfig
+	HTTP http.Config
 }
 
-func InitConfig(ctx context.Context, configs []string, noload bool) (*Config, *sequencer.Sequencer, *http.HTTPServer) {
+// InitConfig initializes Manopus with configuration data
+func InitConfig(ctx context.Context, configs []string, noload bool) (*Config, *sequencer.Sequencer, *http.Server) {
 	l := logger(ctx)
 
 	var files []string

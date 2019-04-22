@@ -13,8 +13,9 @@ import (
 	"github.com/geliar/manopus/pkg/log"
 )
 
-type HTTPServer struct {
-	config       HTTPConfig
+// Server implementation of Manopus HTTP server
+type Server struct {
+	config       Config
 	instance     *http.Server
 	routes       map[string]http.Handler
 	defaultRoute http.Handler
@@ -22,9 +23,10 @@ type HTTPServer struct {
 	mainCtx context.Context
 }
 
-var server HTTPServer
+var server Server
 
-func Init(ctx context.Context, config HTTPConfig) *HTTPServer {
+// Init creates instance of HTTP server and starts it in background
+func Init(ctx context.Context, config Config) *Server {
 	if config.Listen == "" {
 		log.Info().Msg("HTTP server has not been configured")
 		return nil
@@ -36,15 +38,18 @@ func Init(ctx context.Context, config HTTPConfig) *HTTPServer {
 	return &server
 }
 
+// AddHandler add http.Handler to the router on specific path
 func AddHandler(ctx context.Context, path string, h http.Handler) {
 	server.AddHandler(ctx, path, h)
 }
 
+// SetDefaultHandler sets default http.Handler for all unspecified paths
 func SetDefaultHandler(ctx context.Context, h http.Handler) {
 	server.SetDefaultHandler(ctx, h)
 }
 
-func (s *HTTPServer) Start(ctx context.Context) {
+// Start starts execution of HTTP server
+func (s *Server) Start(ctx context.Context) {
 	l := logger(ctx)
 	handler := midsimple.New(hlog.NewHandler(l)).
 		Use(hlog.RemoteAddrHandler("ip")).
@@ -64,7 +69,8 @@ func (s *HTTPServer) Start(ctx context.Context) {
 	}()
 }
 
-func (s *HTTPServer) Stop(ctx context.Context) {
+// Stop HTTP server
+func (s *Server) Stop(ctx context.Context) {
 	l := logger(ctx)
 	if s.instance == nil {
 		log.Fatal().Msg("Trying to shutdown not started HTTP server")
@@ -76,7 +82,8 @@ func (s *HTTPServer) Stop(ctx context.Context) {
 	}
 }
 
-func (s *HTTPServer) AddHandler(ctx context.Context, path string, h http.Handler) {
+// AddHandler add http.Handler to the router on specific path
+func (s *Server) AddHandler(ctx context.Context, path string, h http.Handler) {
 	l := logger(ctx).With().Str("http_path", path).Logger()
 	s.Lock()
 	defer s.Unlock()
@@ -91,7 +98,8 @@ func (s *HTTPServer) AddHandler(ctx context.Context, path string, h http.Handler
 	l.Debug().Msg("Added HTTP server handler")
 }
 
-func (s *HTTPServer) SetDefaultHandler(ctx context.Context, h http.Handler) {
+// SetDefaultHandler sets default http.Handler for all unspecified paths
+func (s *Server) SetDefaultHandler(ctx context.Context, h http.Handler) {
 	l := logger(ctx)
 	s.Lock()
 	defer s.Unlock()
@@ -99,7 +107,7 @@ func (s *HTTPServer) SetDefaultHandler(ctx context.Context, h http.Handler) {
 	l.Debug().Msg("Set default HTTP server handler")
 }
 
-func (s *HTTPServer) routerHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 	hlog.FromRequest(r).Debug().
 		Msgf("%s %s", r.Method, r.RequestURI)
 	s.RLock()

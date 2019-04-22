@@ -14,14 +14,17 @@ type catalogStore struct {
 
 var catalog catalogStore
 
+// Register register connector in the catalog
 func Register(ctx context.Context, name string, driver Driver) {
 	catalog.register(ctx, name, driver)
 }
 
+// Send send response with specified connector
 func Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	return catalog.send(ctx, response)
 }
 
+// StopAll stop all outputs
 func StopAll(ctx context.Context) {
 	catalog.stopAll(ctx)
 }
