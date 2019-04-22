@@ -52,7 +52,7 @@ func showUsage() {
 	println("  -h, --help: Show this page")
 }
 
-func wait(ctx context.Context, cancel context.CancelFunc, cfg *config.Config, sequencerInstance *sequencer.Sequencer, httpServer *http.HTTPServer) {
+func wait(ctx context.Context, cancel context.CancelFunc, cfg *config.Config, sequencerInstance *sequencer.Sequencer, httpServer *http.Server) {
 	stopSignal := make(chan os.Signal, 1)
 	signal.Notify(stopSignal, os.Interrupt)
 	for {

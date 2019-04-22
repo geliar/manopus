@@ -16,7 +16,8 @@ import (
 	"github.com/geliar/manopus/pkg/payload"
 )
 
-type GitHub struct {
+//Bitbucket implementation of the Bitbucket connector
+type Bitbucket struct {
 	created  int64
 	id       int64
 	name     string
@@ -28,21 +29,25 @@ type GitHub struct {
 	client   *cbitbucket.Client
 }
 
-func (c *GitHub) Name() string {
+// Name returns name of the connector
+func (c *Bitbucket) Name() string {
 	return c.name
 }
 
-func (c *GitHub) Type() string {
+// Type returns type of connector
+func (c *Bitbucket) Type() string {
 	return serviceName
 }
 
-func (c *GitHub) RegisterHandler(ctx context.Context, handler input.Handler) {
+// RegisterHandler registers event handler with connector
+func (c *Bitbucket) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
-func (c *GitHub) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
+// Send sends response with connector
+func (c *Bitbucket) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
 		Str("input_name", response.Request.Input).
@@ -73,7 +78,7 @@ func (c *GitHub) Send(ctx context.Context, response *payload.Response) map[strin
 	return nil
 }
 
-func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Bitbucket) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	tl := hlog.FromRequest(r)
 	ctx := tl.WithContext(context.Background())
 	_ = ctx
@@ -91,21 +96,21 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	event.Input = c.name
 	switch v := data.(type) {
 	case whbitbucket.PullRequestCreatedPayload:
-		event.Type = RequestTypePullRequestCreated
-		event.Data = RequestPullRequestCreated{
+		event.Type = requestTypePullRequestCreated
+		event.Data = requestPullRequestCreated{
 			PullRequestCreatedPayload: v,
 		}
 		l.Debug().Msg("Pull request created event")
 	case whbitbucket.PullRequestApprovedPayload:
-		event.Type = RequestTypePullRequestApproved
-		event.Data = RequestPullRequestApproved{
+		event.Type = requestTypePullRequestApproved
+		event.Data = requestPullRequestApproved{
 			PullRequestApprovedPayload: v,
 		}
 
 		l.Debug().Msg("Pull request approved event")
 	case whbitbucket.RepoPushPayload:
-		event.Type = RequestTypeRepoPush
-		event.Data = RequestPush{
+		event.Type = requestTypeRepoPush
+		event.Data = requestPush{
 			RepoPushPayload: v,
 		}
 
@@ -117,19 +122,19 @@ func (c *GitHub) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Stop connector
-func (c *GitHub) Stop(ctx context.Context) {
+func (c *Bitbucket) Stop(ctx context.Context) {
 	if !c.stop {
 		c.stop = true
 		close(c.stopCh)
 	}
 }
 
-func (c *GitHub) getID() string {
+func (c *Bitbucket) getID() string {
 	id := atomic.AddInt64(&c.id, 1)
 	return fmt.Sprintf("%s-%d-%d", c.name, c.created, id)
 }
 
-func (c *GitHub) sendEventToHandlers(ctx context.Context, event *payload.Event) (response *payload.Response) {
+func (c *Bitbucket) sendEventToHandlers(ctx context.Context, event *payload.Event) (response *payload.Response) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	for _, h := range c.handlers {

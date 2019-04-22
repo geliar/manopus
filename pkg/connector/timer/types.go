@@ -1,15 +1,15 @@
 package timer
 
-const RequestTypeTicker = "ticker"
+const requestTypeTicker = "ticker"
 
-type RequestTicker struct {
+type requestTicker struct {
 	TickerID string `json:"ticker_id"`
 	Now      int64  `json:"now"`
 }
 
-const RequestTypeTimer = "timer"
+const requestTypeTimer = "timer"
 
-type RequestTimer struct {
+type requestTimer struct {
 	TimerID string                 `json:"timer_id"`
 	Now     int64                  `json:"now"`
 	Data    map[string]interface{} `json:"json"`

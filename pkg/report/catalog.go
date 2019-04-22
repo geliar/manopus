@@ -12,10 +12,12 @@ type catalogStore struct {
 
 var catalog catalogStore
 
+// Register register report builder in the catalog
 func Register(ctx context.Context, name string, builder Builder) {
 	catalog.register(ctx, name, builder)
 }
 
+// Open start the report
 func Open(ctx context.Context, id string, step int) Driver {
 	return catalog.open(ctx, id, step)
 }

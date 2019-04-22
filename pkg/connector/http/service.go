@@ -15,6 +15,7 @@ import (
 	"github.com/geliar/manopus/pkg/input"
 )
 
+// HTTP connector implementation
 type HTTP struct {
 	created  int64
 	id       int64
@@ -38,14 +39,14 @@ func (c *HTTP) Type() string {
 	return connectorName
 }
 
-// RegisterHandler with connector
+// RegisterHandler registers event handler with connector
 func (c *HTTP) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.Lock()
 	defer c.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
-// Send response with connector
+// Send sends response with connector
 func (c *HTTP) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
@@ -76,13 +77,13 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	e := payload.Event{
 		ID:    c.getID(),
-		Type:  RequestTypeHTTPRequest,
+		Type:  requestTypeHTTPRequest,
 		Input: c.name,
-		Data: RequestHTTPRequest{
+		Data: requestHTTPRequest{
 			Method:      r.Method,
 			Host:        r.Host,
 			RemoteAddr:  r.RemoteAddr,
-			Uri:         r.RequestURI,
+			URI:         r.RequestURI,
 			Path:        r.URL.Path,
 			Form:        r.Form,
 			ContentType: r.Header.Get("Content-Type"),
@@ -101,9 +102,9 @@ func (c *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		e.Type = RequestTypeHTTPJSONRequest
-		e.Data = RequestHTTPJSONRequest{
-			RequestHTTPRequest: e.Data.(RequestHTTPRequest),
+		e.Type = requestTypeHTTPJSONRequest
+		e.Data = requestHTTPJSONRequest{
+			requestHTTPRequest: e.Data.(requestHTTPRequest),
 			JSON:               v,
 		}
 	}

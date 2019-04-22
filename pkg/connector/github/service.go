@@ -21,6 +21,7 @@ import (
 	"github.com/geliar/manopus/pkg/payload"
 )
 
+// GitHub connector implementation
 type GitHub struct {
 	created  int64
 	id       int64
@@ -33,22 +34,24 @@ type GitHub struct {
 	client   *cgithub.Client
 }
 
+// Name returns name of the connector
 func (c *GitHub) Name() string {
 	return c.name
 }
 
+// Type returns type of connector
 func (c *GitHub) Type() string {
 	return serviceName
 }
 
-// RegisterHandler registers input handler with connector
+// RegisterHandler registers event handler with connector
 func (c *GitHub) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
-// Send response with connector
+// Send sends response with connector
 func (c *GitHub) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().

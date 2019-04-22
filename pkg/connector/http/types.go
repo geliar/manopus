@@ -1,12 +1,12 @@
 package http
 
-const RequestTypeHTTPRequest = "request"
+const requestTypeHTTPRequest = "request"
 
-type RequestHTTPRequest struct {
+type requestHTTPRequest struct {
 	Method      string              `json:"method" starlark:"method"`
 	Host        string              `json:"host" starlark:"host"`
 	RemoteAddr  string              `json:"remote_addr" starlark:"remote_addr"`
-	Uri         string              `json:"uri" starlark:"uri"`
+	URI         string              `json:"uri" starlark:"uri"`
 	Path        string              `json:"path" starlark:"path"`
 	Form        map[string][]string `json:"form" starlark:"form"`
 	ContentType string              `json:"content_type" starlark:"content_type"`
@@ -16,9 +16,9 @@ type RequestHTTPRequest struct {
 	Body        string              `json:"body" starlark:"body"`
 }
 
-const RequestTypeHTTPJSONRequest = "json_request"
+const requestTypeHTTPJSONRequest = "json_request"
 
-type RequestHTTPJSONRequest struct {
-	RequestHTTPRequest
+type requestHTTPJSONRequest struct {
+	requestHTTPRequest
 	JSON map[string]interface{} `json:"json" starlark:"json"`
 }

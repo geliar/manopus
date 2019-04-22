@@ -1,5 +1,6 @@
 package payload
 
+// Event input event structure
 type Event struct {
 	Input string
 	Type  string
@@ -7,6 +8,7 @@ type Event struct {
 	Data  interface{}
 }
 
+// Response output response structure
 type Response struct {
 	// ID of original request
 	ID string

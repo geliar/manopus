@@ -12,10 +12,12 @@ type catalogStore struct {
 
 var catalog catalogStore
 
+// Register register connector builder in the catalog
 func Register(ctx context.Context, name string, driver Builder) {
 	catalog.register(ctx, name, driver)
 }
 
+// Configure register specified connector with configuration and connector builder from the catalog
 func Configure(ctx context.Context, name string, connector Config) {
 	catalog.configure(ctx, name, connector)
 }

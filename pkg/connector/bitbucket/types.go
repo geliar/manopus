@@ -4,20 +4,20 @@ import (
 	whbitbucket "gopkg.in/go-playground/webhooks.v5/bitbucket"
 )
 
-const RequestTypePullRequestCreated = string(whbitbucket.PullRequestCreatedEvent)
+const requestTypePullRequestCreated = string(whbitbucket.PullRequestCreatedEvent)
 
-type RequestPullRequestCreated struct {
+type requestPullRequestCreated struct {
 	whbitbucket.PullRequestCreatedPayload
 }
 
-const RequestTypePullRequestApproved = string(whbitbucket.PullRequestApprovedEvent)
+const requestTypePullRequestApproved = string(whbitbucket.PullRequestApprovedEvent)
 
-type RequestPullRequestApproved struct {
+type requestPullRequestApproved struct {
 	whbitbucket.PullRequestApprovedPayload
 }
 
-const RequestTypeRepoPush = string(whbitbucket.RepoPushEvent)
+const requestTypeRepoPush = string(whbitbucket.RepoPushEvent)
 
-type RequestPush struct {
+type requestPush struct {
 	whbitbucket.RepoPushPayload
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/geliar/manopus/pkg/store"
 )
 
+// Sequencer implementation of Sequencer
 type Sequencer struct {
 	//Env variables which represent env part of context data
 	Env map[string]interface{} `yaml:"env"`
@@ -37,6 +38,7 @@ type Sequencer struct {
 	mainCtx          context.Context
 }
 
+// Init initializes Seqeuncer
 func (s *Sequencer) Init(ctx context.Context, noload bool) {
 	s.mainCtx = ctx
 	s.sequenceIDPrefix = time.Now().UTC().Format("20060102150405")
@@ -48,6 +50,7 @@ func (s *Sequencer) Init(ctx context.Context, noload bool) {
 	}
 }
 
+// Roll process event with sequences
 func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response interface{}) {
 	l := logger(ctx).With().
 		Str("event_input", event.Input).
@@ -140,6 +143,7 @@ func (s *Sequencer) Roll(ctx context.Context, event *payload.Event) (response in
 	return
 }
 
+// Stop stops Sequencer
 func (s *Sequencer) Stop(ctx context.Context) {
 	l := logger(ctx)
 	l.Info().Msg("Shutting down sequencer")

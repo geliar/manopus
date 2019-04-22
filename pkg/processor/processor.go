@@ -7,11 +7,15 @@ import (
 	"github.com/geliar/manopus/pkg/report"
 )
 
+// NextStatus type of sequence statuses
 type NextStatus int
 
 const (
+	// NextContinue sequencer should continue execution with the next step
 	NextContinue NextStatus = iota
+	// NextStopSequence sequencer should stop execution after this step
 	NextStopSequence
+	// NextRepeatStep sequencer should repeat this step one more time
 	NextRepeatStep
 )
 

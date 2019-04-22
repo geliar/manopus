@@ -20,6 +20,7 @@ import (
 	"github.com/geliar/manopus/pkg/payload"
 )
 
+//Slack implementation of connector for Slack chat
 type Slack struct {
 	created int64
 	id      int64
@@ -48,20 +49,24 @@ func (*Slack) validate() error {
 	return nil
 }
 
+// Name returns name of the connector
 func (c *Slack) Name() string {
 	return c.name
 }
 
+// Type returns type of connector
 func (c *Slack) Type() string {
 	return connectorName
 }
 
+// RegisterHandler registers event handler with connector
 func (c *Slack) RegisterHandler(ctx context.Context, handler input.Handler) {
 	c.Lock()
 	defer c.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
+// Send sends response with connector
 func (c *Slack) Send(ctx context.Context, response *payload.Response) map[string]interface{} {
 	l := logger(ctx)
 	l.Debug().
@@ -114,6 +119,7 @@ func (c *Slack) Send(ctx context.Context, response *payload.Response) map[string
 	return map[string]interface{}{"result": res}
 }
 
+// Stop stops connector
 func (c *Slack) Stop(ctx context.Context) {
 	c.Lock()
 	if c.stop {
