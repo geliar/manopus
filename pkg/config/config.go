@@ -33,9 +33,9 @@ type Config struct {
 	//Sequencer config
 	Sequencer sequencer.Sequencer `yaml:"sequencer"`
 	//Report config
-	Report report.Config
+	Report report.Config `yaml:"report"`
 	//HTTP server config
-	HTTP http.Config
+	HTTP http.Config `yaml:"http"`
 }
 
 // InitConfig initializes Manopus with configuration data
